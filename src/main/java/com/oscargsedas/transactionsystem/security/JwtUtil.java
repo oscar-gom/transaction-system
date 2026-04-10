@@ -24,7 +24,11 @@ public class JwtUtil {
 
 	@PostConstruct
 	public void init() {
-		this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+		byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+		if (keyBytes.length < 32) {
+			throw new IllegalStateException("JWT_SECRET must be at least 32 bytes (256 bits) for HS256");
+		}
+		this.key = Keys.hmacShaKeyFor(keyBytes);
 		log.info("JWT secret key initialized");
 	}
 
