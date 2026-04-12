@@ -3,6 +3,8 @@ package com.oscargsedas.transactionsystem.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -12,7 +14,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "users")
-public class User {
+public class User extends BaseEntity{
 	@Id
 	@GeneratedValue(strategy = GenerationType.UUID)
 	private UUID id;
@@ -22,4 +24,8 @@ public class User {
 	private String name;
 	private String surname;
 	private String password;
+
+	@OneToMany(mappedBy = "user")
+	private Set<Account> accounts = new LinkedHashSet<>();
+
 }
