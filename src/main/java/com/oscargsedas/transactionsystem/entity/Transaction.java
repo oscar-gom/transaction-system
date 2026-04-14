@@ -9,7 +9,12 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "transaction")
+@Table(name = "transaction", indexes = {
+		@Index(name = "idx_tx_sender", columnList = "sender_account_id"),
+		@Index(name = "idx_tx_receiver", columnList = "receiver_account_id"),
+		@Index(name = "idx_tx_idempotency_key", columnList = "idempotency_key"),
+		@Index(name = "idx_tx_created", columnList = "created_at")
+})
 public class Transaction extends BaseEntity {
 	@Id
 	@GeneratedValue(strategy = GenerationType.UUID)

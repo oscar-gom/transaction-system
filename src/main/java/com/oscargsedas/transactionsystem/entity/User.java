@@ -1,6 +1,7 @@
 package com.oscargsedas.transactionsystem.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
 import lombok.*;
 
 import java.util.LinkedHashSet;
@@ -13,13 +14,16 @@ import java.util.UUID;
 @ToString
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "users")
-public class User extends BaseEntity{
+@Table(name = "users", indexes = {
+		@Index(name = "idx_users_email", columnList = "email")
+})
+public class User extends BaseEntity {
 	@Id
 	@GeneratedValue(strategy = GenerationType.UUID)
 	private UUID id;
 
 	@Column(unique = true, nullable = false)
+	@Email
 	private String email;
 	private String name;
 	private String surname;

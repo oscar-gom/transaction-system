@@ -11,7 +11,10 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "ledger_lines")
+@Table(name = "ledger_lines", indexes = {
+		@Index(name = "idx_transaction_id", columnList = "transaction_id"),
+		@Index(name = "idx_account_id", columnList = "account_id")
+})
 @RequiredArgsConstructor
 public class LedgerLine extends BaseEntity {
 	@Id

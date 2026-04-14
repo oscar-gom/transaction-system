@@ -13,7 +13,10 @@ import java.util.UUID;
 @Setter
 @ToString
 @RequiredArgsConstructor
-@Table(name = "accounts")
+@Table(name = "accounts", indexes = {
+		@Index(name = "idx_accounts_user_id", columnList = "user_id"),
+		@Index(name = "idx_accounts_currency", columnList = "currency")
+})
 public class Account extends BaseEntity {
 	@Id
 	@GeneratedValue(strategy = jakarta.persistence.GenerationType.UUID)
