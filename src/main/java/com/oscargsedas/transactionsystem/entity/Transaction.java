@@ -34,6 +34,6 @@ public class Transaction extends BaseEntity {
 
 	@Enumerated(EnumType.STRING)
 	@Column(name = "status", nullable = false)
-	private TransactionStatus status;
+	private TransactionStatus status = TransactionStatus.PENDING;
 
 }
