@@ -1,9 +1,11 @@
 package com.oscargsedas.transactionsystem.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Digits;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Getter
@@ -31,6 +33,10 @@ public class Transaction extends BaseEntity {
 	@ManyToOne(optional = false)
 	@JoinColumn(name = "sender_account_id", nullable = false)
 	private Account senderAccount;
+
+	@Digits(integer = 20, fraction = 2, message = "amount must be a valid number with up to 20 digits and 2 decimal places")
+	@Column(name = "amount", nullable = false, precision = 22, scale = 2)
+	private BigDecimal amount;
 
 	@Enumerated(EnumType.STRING)
 	@Column(name = "status", nullable = false)

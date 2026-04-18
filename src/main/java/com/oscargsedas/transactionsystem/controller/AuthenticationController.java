@@ -46,13 +46,11 @@ public class AuthenticationController {
 			return ResponseEntity.badRequest().body(new AuthResponse("Email is already in use!", null, false));
 		}
 
-		final User newUser = new User(
-				null,
-				userRequest.getEmail(),
-				userRequest.getName(),
-				userRequest.getSurname(),
-				encoder.encode(userRequest.getPassword())
-		);
+		final User newUser = new User();
+		newUser.setEmail(userRequest.getEmail());
+		newUser.setName(userRequest.getName());
+		newUser.setSurname(userRequest.getSurname());
+		newUser.setPassword(encoder.encode(userRequest.getPassword()));
 
 		userRepository.save(newUser);
 		return ResponseEntity.ok(new AuthResponse("User registered successfully!", null, true));

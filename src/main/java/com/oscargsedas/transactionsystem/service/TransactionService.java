@@ -24,6 +24,7 @@ public class TransactionService {
 		transaction.setSenderAccount(sender);
 		transaction.setReceiverAccount(receiver);
 		transaction.setIdempotencyKey(request.idempotencyKey());
+		transaction.setAmount(request.amount());
 
 		transactionRepository.save(transaction);
 	}

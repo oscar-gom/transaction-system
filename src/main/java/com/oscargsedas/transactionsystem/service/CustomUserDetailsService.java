@@ -3,6 +3,7 @@ package com.oscargsedas.transactionsystem.service;
 import com.oscargsedas.transactionsystem.entity.User;
 import com.oscargsedas.transactionsystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -16,7 +17,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 	private final UserRepository userRepository;
 
 	@Override
-	public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+	public UserDetails loadUserByUsername(@NonNull String email) throws UsernameNotFoundException {
 		User user = userRepository.findByEmail(email);
 
 		if (user == null) {

@@ -1,9 +1,20 @@
 package com.oscargsedas.transactionsystem.dto;
 
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.NotNull;
+
+import java.math.BigDecimal;
 import java.util.UUID;
 
 public record TransactionRequest(
+		@NotNull
 		UUID senderId,
+		@NotNull
 		UUID receiverId,
-		UUID idempotencyKey
-) { }
+		@NotNull
+		UUID idempotencyKey,
+		@NotNull
+		@Digits(integer = 20, fraction = 2, message = "amount must be a valid number with up to 20 digits and 2 decimal places")
+		BigDecimal amount
+) {
+}
