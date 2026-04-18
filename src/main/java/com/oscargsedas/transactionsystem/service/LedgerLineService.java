@@ -1,10 +1,13 @@
 package com.oscargsedas.transactionsystem.service;
 
 import com.oscargsedas.transactionsystem.entity.LedgerLine;
+import com.oscargsedas.transactionsystem.exception.ResourceNotFoundException;
+import com.oscargsedas.transactionsystem.repository.AccountRepository;
 import com.oscargsedas.transactionsystem.repository.LedgerLineRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Service
@@ -12,6 +15,7 @@ import java.util.UUID;
 public class LedgerLineService {
 	private final TransactionService transactionService;
 	private final LedgerLineRepository ledgerLineRepository;
+	private final AccountRepository accountRepository;
 
 	public void createLedgerLinesForTransaction(UUID transactionId) {
 		var transaction = transactionService.getTransactionById(transactionId);
@@ -28,5 +32,16 @@ public class LedgerLineService {
 
 		ledgerLineRepository.save(senderLedgerLine);
 		ledgerLineRepository.save(receiverLedgerLine);
+	}
+
+	public BigDecimal getAccountBalance(UUID accountId) {
+		if (!accountRepository.existsById(accountId)) {
+			throw new ResourceNotFoundException("Account not found with id: " + accountId);
+		}
+
+		return ledgerLineRepository.findAll().stream()
+				.filter(line -> line.getAccount().getId().equals(accountId))
+				.map(LedgerLine::getAmount)
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
 	}
 }
