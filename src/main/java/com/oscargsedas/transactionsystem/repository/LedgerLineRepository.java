@@ -11,4 +11,9 @@ import java.util.UUID;
 public interface LedgerLineRepository extends JpaRepository<LedgerLine, UUID> {
 	@Query("select coalesce(sum(l.amount), 0) from LedgerLine l where l.account.id = :accountId")
 	BigDecimal getAccountBalance(@Param("accountId") UUID accountId);
+
+	@Query("select coalesce(sum(l.amount), 0) from LedgerLine l where l.transaction.id = :transactionId")
+	BigDecimal getTransactionBalance(@Param("transactionId") UUID transactionId);
+
+	long countByTransactionId(UUID transactionId);
 }

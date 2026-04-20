@@ -40,4 +40,12 @@ public class LedgerLineService {
 
 		return ledgerLineRepository.getAccountBalance(accountId);
 	}
+
+	public BigDecimal getTransactionBalance(UUID transactionId) {
+		return ledgerLineRepository.getTransactionBalance(transactionId);
+	}
+
+	public long countByTransactionId(UUID transactionId) {
+		return ledgerLineRepository.countByTransactionId(transactionId);
+	}
 }
