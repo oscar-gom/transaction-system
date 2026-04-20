@@ -1,6 +1,8 @@
 package com.oscargsedas.transactionsystem.service;
 
+import com.oscargsedas.transactionsystem.dto.AccountDto;
 import com.oscargsedas.transactionsystem.dto.AccountRequest;
+import com.oscargsedas.transactionsystem.dto.EntityDtoMapper;
 import com.oscargsedas.transactionsystem.entity.Account;
 import com.oscargsedas.transactionsystem.entity.User;
 import com.oscargsedas.transactionsystem.exception.ForbiddenAccessException;
@@ -19,6 +21,7 @@ import java.util.UUID;
 public class AccountService {
 	private final AccountRepository accountRepository;
 	private final UserRepository userRepository;
+	private final EntityDtoMapper entityDtoMapper;
 
 	public void createAccount(AccountRequest request) {
 		User authenticatedUser = getAuthenticatedUser();
@@ -34,7 +37,14 @@ public class AccountService {
 		accountRepository.save(account);
 	}
 
-	public Account getAccountById(UUID accountId) {
+	public AccountDto getAccountById(UUID accountId) {
+		User authenticatedUser = getAuthenticatedUser();
+		Account account = findAccountOrThrow(accountId);
+		validateOwnershipOrThrow(authenticatedUser.getId(), account);
+		return entityDtoMapper.toAccountDto(account);
+	}
+
+	public Account getAccountEntityById(UUID accountId) {
 		User authenticatedUser = getAuthenticatedUser();
 		Account account = findAccountOrThrow(accountId);
 		validateOwnershipOrThrow(authenticatedUser.getId(), account);

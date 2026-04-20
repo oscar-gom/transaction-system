@@ -1,5 +1,7 @@
 package com.oscargsedas.transactionsystem.service;
 
+import com.oscargsedas.transactionsystem.dto.EntityDtoMapper;
+import com.oscargsedas.transactionsystem.dto.TransactionDto;
 import com.oscargsedas.transactionsystem.dto.TransactionRequest;
 import com.oscargsedas.transactionsystem.entity.Account;
 import com.oscargsedas.transactionsystem.entity.Transaction;
@@ -34,6 +36,9 @@ class TransactionServiceTest {
 	@Mock
 	private LedgerLineService ledgerLineService;
 
+	@Mock
+	private EntityDtoMapper entityDtoMapper;
+
 	@InjectMocks
 	private TransactionService transactionService;
 
@@ -65,10 +70,13 @@ class TransactionServiceTest {
 
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.of(existing));
 
-		TransactionRequest request = new TransactionRequest(UUID.randomUUID(), UUID.randomUUID(), idempotencyKey, new BigDecimal("50.00"));
-		Transaction result = transactionService.createTransaction(request);
+		TransactionDto mapped = new TransactionDto(null, null, existing.getId(), null, null, idempotencyKey, new BigDecimal("50.00"), TransactionStatus.PENDING);
+		when(entityDtoMapper.toTransactionDto(existing)).thenReturn(mapped);
 
-		assertSame(existing, result);
+		TransactionRequest request = new TransactionRequest(UUID.randomUUID(), UUID.randomUUID(), idempotencyKey, new BigDecimal("50.00"));
+		TransactionDto result = transactionService.createTransaction(request);
+
+		assertSame(mapped, result);
 		verify(transactionRepository, never()).save(any(Transaction.class));
 		verifyNoInteractions(accountService);
 		verifyNoInteractions(ledgerLineService);
@@ -89,8 +97,8 @@ class TransactionServiceTest {
 		TransactionRequest request = new TransactionRequest(senderId, receiverId, idempotencyKey, amount);
 
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
-		when(accountService.getAccountById(senderId)).thenReturn(sender);
-		when(accountService.getAccountById(receiverId)).thenReturn(receiver);
+		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
+		when(accountService.getAccountEntityById(receiverId)).thenReturn(receiver);
 		when(ledgerLineService.getAccountBalance(senderId)).thenReturn(new BigDecimal("100.00"));
 		when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
 			Transaction transaction = invocation.getArgument(0);
@@ -102,10 +110,13 @@ class TransactionServiceTest {
 		when(ledgerLineService.countByTransactionId(any(UUID.class))).thenReturn(2L);
 		when(ledgerLineService.getTransactionBalance(any(UUID.class))).thenReturn(BigDecimal.ZERO);
 
-		Transaction result = transactionService.createTransaction(request);
+		TransactionDto mapped = new TransactionDto(null, null, UUID.randomUUID(), null, null, idempotencyKey, amount, TransactionStatus.COMPLETED);
+		when(entityDtoMapper.toTransactionDto(any(Transaction.class))).thenReturn(mapped);
 
-		assertEquals(TransactionStatus.COMPLETED, result.getStatus());
-		assertEquals(idempotencyKey, result.getIdempotencyKey());
+		TransactionDto result = transactionService.createTransaction(request);
+
+		assertEquals(TransactionStatus.COMPLETED, result.status());
+		assertEquals(idempotencyKey, result.idempotencyKey());
 		verify(transactionRepository, times(2)).save(any(Transaction.class));
 		verify(ledgerLineService).createLedgerLinesForTransaction(any(Transaction.class));
 	}
@@ -122,8 +133,8 @@ class TransactionServiceTest {
 		receiver.setId(receiverId);
 
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
-		when(accountService.getAccountById(senderId)).thenReturn(sender);
-		when(accountService.getAccountById(receiverId)).thenReturn(receiver);
+		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
+		when(accountService.getAccountEntityById(receiverId)).thenReturn(receiver);
 		when(ledgerLineService.getAccountBalance(senderId)).thenReturn(new BigDecimal("10.00"));
 
 		TransactionRequest request = new TransactionRequest(senderId, receiverId, idempotencyKey, new BigDecimal("50.00"));
@@ -145,8 +156,8 @@ class TransactionServiceTest {
 		receiver.setId(receiverId);
 
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
-		when(accountService.getAccountById(senderId)).thenReturn(sender);
-		when(accountService.getAccountById(receiverId)).thenReturn(receiver);
+		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
+		when(accountService.getAccountEntityById(receiverId)).thenReturn(receiver);
 		when(ledgerLineService.getAccountBalance(senderId)).thenReturn(new BigDecimal("90.00"));
 		when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
 			Transaction transaction = invocation.getArgument(0);
@@ -175,8 +186,8 @@ class TransactionServiceTest {
 		receiver.setId(receiverId);
 
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
-		when(accountService.getAccountById(senderId)).thenReturn(sender);
-		when(accountService.getAccountById(receiverId)).thenReturn(receiver);
+		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
+		when(accountService.getAccountEntityById(receiverId)).thenReturn(receiver);
 		when(ledgerLineService.getAccountBalance(senderId)).thenReturn(new BigDecimal("90.00"));
 		when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
 			Transaction transaction = invocation.getArgument(0);
@@ -210,8 +221,8 @@ class TransactionServiceTest {
 		receiver.setId(receiverId);
 
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
-		when(accountService.getAccountById(senderId)).thenReturn(sender);
-		when(accountService.getAccountById(receiverId)).thenReturn(receiver);
+		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
+		when(accountService.getAccountEntityById(receiverId)).thenReturn(receiver);
 		when(ledgerLineService.getAccountBalance(senderId)).thenReturn(new BigDecimal("90.00"));
 		when(transactionRepository.save(any(Transaction.class))).thenThrow(new RuntimeException("db temporary error"));
 

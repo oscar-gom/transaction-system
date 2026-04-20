@@ -1,5 +1,7 @@
 package com.oscargsedas.transactionsystem.service;
 
+import com.oscargsedas.transactionsystem.dto.EntityDtoMapper;
+import com.oscargsedas.transactionsystem.dto.TransactionDto;
 import com.oscargsedas.transactionsystem.dto.TransactionRequest;
 import com.oscargsedas.transactionsystem.entity.Account;
 import com.oscargsedas.transactionsystem.entity.Transaction;
@@ -25,6 +27,7 @@ public class TransactionService {
 	private final TransactionRepository transactionRepository;
 	private final AccountService accountService;
 	private final LedgerLineService ledgerLineService;
+	private final EntityDtoMapper entityDtoMapper;
 
 	@Retryable(
 			retryFor = TransactionProcessingException.class,
@@ -32,7 +35,12 @@ public class TransactionService {
 			backoff = @Backoff(delay = 200, multiplier = 2)
 	)
 	@Transactional
-	public Transaction createTransaction(TransactionRequest request) {
+	public TransactionDto createTransaction(TransactionRequest request) {
+		Transaction transaction = createTransactionEntity(request);
+		return entityDtoMapper.toTransactionDto(transaction);
+	}
+
+	public Transaction createTransactionEntity(TransactionRequest request) {
 		Transaction existingTransaction = transactionRepository.findByIdempotencyKey(request.idempotencyKey())
 				.orElse(null);
 		if (existingTransaction != null) {
@@ -47,8 +55,8 @@ public class TransactionService {
 				throw new IllegalArgumentException("Amount must be greater than zero");
 			}
 
-			Account sender = accountService.getAccountById(request.senderId());
-			Account receiver = accountService.getAccountById(request.receiverId());
+			Account sender = accountService.getAccountEntityById(request.senderId());
+			Account receiver = accountService.getAccountEntityById(request.receiverId());
 
 			BigDecimal senderBalance = ledgerLineService.getAccountBalance(sender.getId());
 			if (senderBalance.compareTo(request.amount()) < 0) {
@@ -86,7 +94,7 @@ public class TransactionService {
 	}
 
 	@Recover
-	public Transaction recover(TransactionProcessingException ex, TransactionRequest request) {
+	public TransactionDto recover(TransactionProcessingException ex, TransactionRequest request) {
 		throw new TransactionRetriesExhaustedException(request.idempotencyKey(), ex);
 	}
 
@@ -97,8 +105,9 @@ public class TransactionService {
 				|| ex instanceof CompletedIdempotencyKeyException;
 	}
 
-	public Transaction getTransactionById(UUID transactionId) {
-		return transactionRepository.findById(transactionId)
+	public TransactionDto getTransactionById(UUID transactionId) {
+		Transaction transaction = transactionRepository.findById(transactionId)
 				.orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + transactionId));
+		return entityDtoMapper.toTransactionDto(transaction);
 	}
 }
