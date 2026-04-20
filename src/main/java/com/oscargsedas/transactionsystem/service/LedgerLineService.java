@@ -38,9 +38,6 @@ public class LedgerLineService {
 			throw new ResourceNotFoundException("Account not found with id: " + accountId);
 		}
 
-		return ledgerLineRepository.findAll().stream()
-				.filter(line -> line.getAccount().getId().equals(accountId))
-				.map(LedgerLine::getAmount)
-				.reduce(BigDecimal.ZERO, BigDecimal::add);
+		return ledgerLineRepository.getAccountBalance(accountId);
 	}
 }
