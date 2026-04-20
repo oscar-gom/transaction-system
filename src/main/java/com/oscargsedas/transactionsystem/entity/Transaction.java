@@ -11,7 +11,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "transaction", indexes = {
+@Table(name = "transactions", indexes = {
 		@Index(name = "idx_tx_sender", columnList = "sender_account_id"),
 		@Index(name = "idx_tx_receiver", columnList = "receiver_account_id"),
 		@Index(name = "idx_tx_idempotency_key", columnList = "idempotency_key"),

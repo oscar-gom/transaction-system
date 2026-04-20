@@ -2,6 +2,7 @@ package com.oscargsedas.transactionsystem.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.util.LinkedHashSet;
@@ -25,8 +26,11 @@ public class User extends BaseEntity {
 	@Column(unique = true, nullable = false)
 	@Email
 	private String email;
+	@NotNull
 	private String name;
+	@NotNull
 	private String surname;
+	@NotNull
 	private String password;
 
 	@OneToMany(mappedBy = "user")

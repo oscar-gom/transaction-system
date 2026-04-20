@@ -1,6 +1,7 @@
 package com.oscargsedas.transactionsystem.service;
 
 import com.oscargsedas.transactionsystem.entity.LedgerLine;
+import com.oscargsedas.transactionsystem.entity.Transaction;
 import com.oscargsedas.transactionsystem.exception.ResourceNotFoundException;
 import com.oscargsedas.transactionsystem.repository.AccountRepository;
 import com.oscargsedas.transactionsystem.repository.LedgerLineRepository;
@@ -13,12 +14,10 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class LedgerLineService {
-	private final TransactionService transactionService;
 	private final LedgerLineRepository ledgerLineRepository;
 	private final AccountRepository accountRepository;
 
-	public void createLedgerLinesForTransaction(UUID transactionId) {
-		var transaction = transactionService.getTransactionById(transactionId);
+	public void createLedgerLinesForTransaction(Transaction transaction) {
 
 		var senderLedgerLine = new LedgerLine();
 		senderLedgerLine.setTransaction(transaction);
