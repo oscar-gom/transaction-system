@@ -14,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Service
@@ -22,6 +23,7 @@ public class AccountService {
 	private final AccountRepository accountRepository;
 	private final UserRepository userRepository;
 	private final EntityDtoMapper entityDtoMapper;
+	private final LedgerLineService ledgerLineService;
 
 	public void createAccount(AccountRequest request) {
 		User authenticatedUser = getAuthenticatedUser();
@@ -69,6 +71,12 @@ public class AccountService {
 		User authenticatedUser = getAuthenticatedUser();
 		Account account = findAccountOrThrow(accountId);
 		validateOwnershipOrThrow(authenticatedUser.getId(), account);
+		BigDecimal balance = ledgerLineService.getAccountBalance(accountId);
+
+		if (balance.compareTo(BigDecimal.ZERO) != 0) {
+			throw new ForbiddenAccessException("You cannot delete an account with a non-zero balance");
+		}
+
 		accountRepository.delete(account);
 	}
 
