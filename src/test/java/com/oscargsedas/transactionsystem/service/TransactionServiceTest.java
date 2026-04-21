@@ -6,7 +6,9 @@ import com.oscargsedas.transactionsystem.dto.TransactionRequest;
 import com.oscargsedas.transactionsystem.entity.Account;
 import com.oscargsedas.transactionsystem.entity.Transaction;
 import com.oscargsedas.transactionsystem.entity.TransactionStatus;
+import com.oscargsedas.transactionsystem.entity.User;
 import com.oscargsedas.transactionsystem.exception.CompletedIdempotencyKeyException;
+import com.oscargsedas.transactionsystem.exception.ForbiddenAccessException;
 import com.oscargsedas.transactionsystem.exception.TransactionProcessingException;
 import com.oscargsedas.transactionsystem.repository.TransactionRepository;
 import org.junit.jupiter.api.Test;
@@ -44,58 +46,99 @@ class TransactionServiceTest {
 
 	@Test
 	void createTransactionThrowsWhenIdempotencyKeyAlreadyCompleted() {
+		UUID authenticatedUserId = UUID.randomUUID();
 		UUID idempotencyKey = UUID.randomUUID();
+
+		Account sender = accountOwnedBy(authenticatedUserId);
+		Account receiver = accountOwnedBy(authenticatedUserId);
+
 		Transaction existing = new Transaction();
 		existing.setId(UUID.randomUUID());
 		existing.setIdempotencyKey(idempotencyKey);
 		existing.setStatus(TransactionStatus.COMPLETED);
+		existing.setSenderAccount(sender);
+		existing.setReceiverAccount(receiver);
 
+		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.of(existing));
 
-		TransactionRequest request = new TransactionRequest(UUID.randomUUID(), UUID.randomUUID(), idempotencyKey, new BigDecimal("50.00"));
+		TransactionRequest request = new TransactionRequest(sender.getId(), receiver.getId(), idempotencyKey, new BigDecimal("50.00"));
 		assertThrows(CompletedIdempotencyKeyException.class, () -> transactionService.createTransaction(request));
 
 		verify(transactionRepository, never()).save(any(Transaction.class));
-		verifyNoInteractions(accountService);
 		verifyNoInteractions(ledgerLineService);
 	}
 
 	@Test
 	void createTransactionReturnsExistingWhenIdempotencyKeyAlreadyExistsAndNotCompleted() {
+		UUID authenticatedUserId = UUID.randomUUID();
 		UUID idempotencyKey = UUID.randomUUID();
+
+		Account sender = accountOwnedBy(authenticatedUserId);
+		Account receiver = accountOwnedBy(authenticatedUserId);
+
 		Transaction existing = new Transaction();
 		existing.setId(UUID.randomUUID());
 		existing.setIdempotencyKey(idempotencyKey);
 		existing.setStatus(TransactionStatus.PENDING);
+		existing.setSenderAccount(sender);
+		existing.setReceiverAccount(receiver);
 
+		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.of(existing));
 
 		TransactionDto mapped = new TransactionDto(null, null, existing.getId(), null, null, idempotencyKey, new BigDecimal("50.00"), TransactionStatus.PENDING);
 		when(entityDtoMapper.toTransactionDto(existing)).thenReturn(mapped);
 
-		TransactionRequest request = new TransactionRequest(UUID.randomUUID(), UUID.randomUUID(), idempotencyKey, new BigDecimal("50.00"));
+		TransactionRequest request = new TransactionRequest(sender.getId(), receiver.getId(), idempotencyKey, new BigDecimal("50.00"));
 		TransactionDto result = transactionService.createTransaction(request);
 
 		assertSame(mapped, result);
 		verify(transactionRepository, never()).save(any(Transaction.class));
-		verifyNoInteractions(accountService);
+		verifyNoInteractions(ledgerLineService);
+	}
+
+	@Test
+	void createTransactionFailsWhenExistingIdempotentTransactionDoesNotBelongToUser() {
+		UUID authenticatedUserId = UUID.randomUUID();
+		UUID idempotencyKey = UUID.randomUUID();
+
+		Account sender = accountOwnedBy(authenticatedUserId);
+		Account receiver = accountOwnedBy(UUID.randomUUID());
+
+		Transaction existing = new Transaction();
+		existing.setId(UUID.randomUUID());
+		existing.setIdempotencyKey(idempotencyKey);
+		existing.setStatus(TransactionStatus.PENDING);
+		existing.setSenderAccount(sender);
+		existing.setReceiverAccount(receiver);
+
+		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
+		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.of(existing));
+
+		TransactionRequest request = new TransactionRequest(sender.getId(), receiver.getId(), idempotencyKey, new BigDecimal("10.00"));
+
+		assertThrows(ForbiddenAccessException.class, () -> transactionService.createTransaction(request));
+		verify(transactionRepository, never()).save(any(Transaction.class));
 		verifyNoInteractions(ledgerLineService);
 	}
 
 	@Test
 	void createTransactionCompletesWhenLedgerIsBalanced() {
+		UUID authenticatedUserId = UUID.randomUUID();
 		UUID senderId = UUID.randomUUID();
 		UUID receiverId = UUID.randomUUID();
 		UUID idempotencyKey = UUID.randomUUID();
 		BigDecimal amount = new BigDecimal("25.00");
 
-		Account sender = new Account();
+		Account sender = accountOwnedBy(authenticatedUserId);
 		sender.setId(senderId);
-		Account receiver = new Account();
+		Account receiver = accountOwnedBy(authenticatedUserId);
 		receiver.setId(receiverId);
 
 		TransactionRequest request = new TransactionRequest(senderId, receiverId, idempotencyKey, amount);
 
+		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
 		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
 		when(accountService.getAccountEntityById(receiverId)).thenReturn(receiver);
@@ -123,15 +166,17 @@ class TransactionServiceTest {
 
 	@Test
 	void createTransactionFailsWhenSenderHasInsufficientFunds() {
+		UUID authenticatedUserId = UUID.randomUUID();
 		UUID senderId = UUID.randomUUID();
 		UUID receiverId = UUID.randomUUID();
 		UUID idempotencyKey = UUID.randomUUID();
 
-		Account sender = new Account();
+		Account sender = accountOwnedBy(authenticatedUserId);
 		sender.setId(senderId);
-		Account receiver = new Account();
+		Account receiver = accountOwnedBy(authenticatedUserId);
 		receiver.setId(receiverId);
 
+		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
 		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
 		when(accountService.getAccountEntityById(receiverId)).thenReturn(receiver);
@@ -146,15 +191,17 @@ class TransactionServiceTest {
 
 	@Test
 	void createTransactionFailsWhenLedgerLineCountIsLessThanTwo() {
+		UUID authenticatedUserId = UUID.randomUUID();
 		UUID senderId = UUID.randomUUID();
 		UUID receiverId = UUID.randomUUID();
 		UUID idempotencyKey = UUID.randomUUID();
 
-		Account sender = new Account();
+		Account sender = accountOwnedBy(authenticatedUserId);
 		sender.setId(senderId);
-		Account receiver = new Account();
+		Account receiver = accountOwnedBy(authenticatedUserId);
 		receiver.setId(receiverId);
 
+		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
 		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
 		when(accountService.getAccountEntityById(receiverId)).thenReturn(receiver);
@@ -176,15 +223,17 @@ class TransactionServiceTest {
 
 	@Test
 	void createTransactionFailsWhenLedgerBalanceIsNotZero() {
+		UUID authenticatedUserId = UUID.randomUUID();
 		UUID senderId = UUID.randomUUID();
 		UUID receiverId = UUID.randomUUID();
 		UUID idempotencyKey = UUID.randomUUID();
 
-		Account sender = new Account();
+		Account sender = accountOwnedBy(authenticatedUserId);
 		sender.setId(senderId);
-		Account receiver = new Account();
+		Account receiver = accountOwnedBy(authenticatedUserId);
 		receiver.setId(receiverId);
 
+		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
 		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
 		when(accountService.getAccountEntityById(receiverId)).thenReturn(receiver);
@@ -211,15 +260,17 @@ class TransactionServiceTest {
 
 	@Test
 	void createTransactionWrapsTechnicalErrorsAsRetryableException() {
+		UUID authenticatedUserId = UUID.randomUUID();
 		UUID senderId = UUID.randomUUID();
 		UUID receiverId = UUID.randomUUID();
 		UUID idempotencyKey = UUID.randomUUID();
 
-		Account sender = new Account();
+		Account sender = accountOwnedBy(authenticatedUserId);
 		sender.setId(senderId);
-		Account receiver = new Account();
+		Account receiver = accountOwnedBy(authenticatedUserId);
 		receiver.setId(receiverId);
 
+		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
 		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
 		when(accountService.getAccountEntityById(receiverId)).thenReturn(receiver);
@@ -231,7 +282,32 @@ class TransactionServiceTest {
 		assertThrows(TransactionProcessingException.class, () -> transactionService.createTransaction(request));
 		verify(transactionRepository, times(1)).save(any(Transaction.class));
 	}
+
+	@Test
+	void getTransactionByIdFailsWhenTransactionUsesAnotherUsersAccount() {
+		UUID authenticatedUserId = UUID.randomUUID();
+		UUID transactionId = UUID.randomUUID();
+		Account sender = accountOwnedBy(authenticatedUserId);
+		Account receiver = accountOwnedBy(UUID.randomUUID());
+
+		Transaction transaction = new Transaction();
+		transaction.setId(transactionId);
+		transaction.setSenderAccount(sender);
+		transaction.setReceiverAccount(receiver);
+
+		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
+		when(transactionRepository.findById(transactionId)).thenReturn(Optional.of(transaction));
+
+		assertThrows(ForbiddenAccessException.class, () -> transactionService.getTransactionById(transactionId));
+		verify(entityDtoMapper, never()).toTransactionDto(any(Transaction.class));
+	}
+
+	private Account accountOwnedBy(UUID userId) {
+		User user = new User();
+		user.setId(userId);
+		Account account = new Account();
+		account.setId(UUID.randomUUID());
+		account.setUser(user);
+		return account;
+	}
 }
-
-
-

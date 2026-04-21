@@ -6,10 +6,7 @@ import com.oscargsedas.transactionsystem.dto.TransactionRequest;
 import com.oscargsedas.transactionsystem.entity.Account;
 import com.oscargsedas.transactionsystem.entity.Transaction;
 import com.oscargsedas.transactionsystem.entity.TransactionStatus;
-import com.oscargsedas.transactionsystem.exception.CompletedIdempotencyKeyException;
-import com.oscargsedas.transactionsystem.exception.ResourceNotFoundException;
-import com.oscargsedas.transactionsystem.exception.TransactionProcessingException;
-import com.oscargsedas.transactionsystem.exception.TransactionRetriesExhaustedException;
+import com.oscargsedas.transactionsystem.exception.*;
 import com.oscargsedas.transactionsystem.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.retry.annotation.Backoff;
@@ -41,9 +38,11 @@ public class TransactionService {
 	}
 
 	public Transaction createTransactionEntity(TransactionRequest request) {
+		UUID authenticatedUserId = accountService.getAuthenticatedUserId();
 		Transaction existingTransaction = transactionRepository.findByIdempotencyKey(request.idempotencyKey())
 				.orElse(null);
 		if (existingTransaction != null) {
+			validateTransactionOwnership(existingTransaction, authenticatedUserId);
 			if (existingTransaction.getStatus() == TransactionStatus.COMPLETED) {
 				throw new CompletedIdempotencyKeyException(request.idempotencyKey());
 			}
@@ -102,12 +101,28 @@ public class TransactionService {
 		return ex instanceof IllegalArgumentException
 				|| ex instanceof IllegalStateException
 				|| ex instanceof ResourceNotFoundException
+				|| ex instanceof ForbiddenAccessException
 				|| ex instanceof CompletedIdempotencyKeyException;
 	}
 
 	public TransactionDto getTransactionById(UUID transactionId) {
+		UUID authenticatedUserId = accountService.getAuthenticatedUserId();
 		Transaction transaction = transactionRepository.findById(transactionId)
 				.orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + transactionId));
+		validateTransactionOwnership(transaction, authenticatedUserId);
 		return entityDtoMapper.toTransactionDto(transaction);
+	}
+
+	private void validateTransactionOwnership(Transaction transaction, UUID authenticatedUserId) {
+		if (transaction.getSenderAccount() == null || transaction.getSenderAccount().getUser() == null
+				|| transaction.getSenderAccount().getUser().getId() == null
+				|| !transaction.getSenderAccount().getUser().getId().equals(authenticatedUserId)) {
+			throw new ForbiddenAccessException("You do not have permission to access this transaction");
+		}
+		if (transaction.getReceiverAccount() == null || transaction.getReceiverAccount().getUser() == null
+				|| transaction.getReceiverAccount().getUser().getId() == null
+				|| !transaction.getReceiverAccount().getUser().getId().equals(authenticatedUserId)) {
+			throw new ForbiddenAccessException("You do not have permission to access this transaction");
+		}
 	}
 }

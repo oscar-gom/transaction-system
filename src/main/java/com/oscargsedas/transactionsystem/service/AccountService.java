@@ -53,6 +53,10 @@ public class AccountService {
 		return account;
 	}
 
+	public UUID getAuthenticatedUserId() {
+		return getAuthenticatedUser().getId();
+	}
+
 	public void updateAccount(UUID accountId, AccountRequest request) {
 		User authenticatedUser = getAuthenticatedUser();
 		Account account = findAccountOrThrow(accountId);
