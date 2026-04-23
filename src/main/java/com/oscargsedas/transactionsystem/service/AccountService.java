@@ -4,15 +4,19 @@ import com.oscargsedas.transactionsystem.dto.AccountDto;
 import com.oscargsedas.transactionsystem.dto.AccountRequest;
 import com.oscargsedas.transactionsystem.dto.EntityDtoMapper;
 import com.oscargsedas.transactionsystem.entity.Account;
+import com.oscargsedas.transactionsystem.entity.Transaction;
+import com.oscargsedas.transactionsystem.entity.TransactionStatus;
 import com.oscargsedas.transactionsystem.entity.User;
 import com.oscargsedas.transactionsystem.exception.ForbiddenAccessException;
 import com.oscargsedas.transactionsystem.exception.ResourceNotFoundException;
 import com.oscargsedas.transactionsystem.repository.AccountRepository;
+import com.oscargsedas.transactionsystem.repository.TransactionRepository;
 import com.oscargsedas.transactionsystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -22,21 +26,46 @@ import java.util.UUID;
 public class AccountService {
 	private final AccountRepository accountRepository;
 	private final UserRepository userRepository;
+	private final TransactionRepository transactionRepository;
 	private final EntityDtoMapper entityDtoMapper;
 	private final LedgerLineService ledgerLineService;
+	private final SystemTreasuryAccountService systemTreasuryAccountService;
+	private final WelcomeBonusProperties welcomeBonusProperties;
 
+	@Transactional
 	public void createAccount(AccountRequest request) {
 		User authenticatedUser = getAuthenticatedUser();
+		assertSameUser(authenticatedUser.getId(), request.userId(), "You cannot create an account for another user");
 
-		if (!authenticatedUser.getId().equals(request.userId())) {
-			throw new ForbiddenAccessException("You cannot create an account for another user");
+		boolean isFirstAccount = accountRepository.countByUserId(authenticatedUser.getId()) == 0;
+		Account savedAccount = accountRepository.save(buildAccount(authenticatedUser, request.currency()));
+
+		if (isFirstAccount) {
+			applyWelcomeBonus(savedAccount);
 		}
+	}
 
+	private void applyWelcomeBonus(Account receiverAccount) {
+		Account treasuryAccount = systemTreasuryAccountService.getOrCreateTreasuryAccount(receiverAccount.getCurrency());
+		Transaction savedTransaction = transactionRepository.save(buildWelcomeTransaction(treasuryAccount, receiverAccount));
+		ledgerLineService.createLedgerLinesForTransaction(savedTransaction);
+	}
+
+	private Account buildAccount(User authenticatedUser, String currency) {
 		Account account = new Account();
 		account.setUser(authenticatedUser);
-		account.setCurrency(request.currency());
+		account.setCurrency(currency);
+		return account;
+	}
 
-		accountRepository.save(account);
+	private Transaction buildWelcomeTransaction(Account senderAccount, Account receiverAccount) {
+		Transaction welcomeTransaction = new Transaction();
+		welcomeTransaction.setSenderAccount(senderAccount);
+		welcomeTransaction.setReceiverAccount(receiverAccount);
+		welcomeTransaction.setIdempotencyKey(UUID.randomUUID());
+		welcomeTransaction.setAmount(welcomeBonusProperties.getAmount());
+		welcomeTransaction.setStatus(TransactionStatus.COMPLETED);
+		return welcomeTransaction;
 	}
 
 	public AccountDto getAccountById(UUID accountId) {
@@ -61,10 +90,7 @@ public class AccountService {
 		User authenticatedUser = getAuthenticatedUser();
 		Account account = findAccountOrThrow(accountId);
 		validateOwnershipOrThrow(authenticatedUser.getId(), account);
-
-		if (!authenticatedUser.getId().equals(request.userId())) {
-			throw new ForbiddenAccessException("You cannot change the owner of the account");
-		}
+		assertSameUser(authenticatedUser.getId(), request.userId(), "You cannot change the owner of the account");
 
 		account.setCurrency(request.currency());
 
@@ -106,6 +132,12 @@ public class AccountService {
 	private void validateOwnershipOrThrow(UUID authenticatedUserId, Account account) {
 		if (account.getUser() == null || account.getUser().getId() == null || !account.getUser().getId().equals(authenticatedUserId)) {
 			throw new ForbiddenAccessException("You do not have permission to access this account");
+		}
+	}
+
+	private void assertSameUser(UUID authenticatedUserId, UUID requestedUserId, String message) {
+		if (!authenticatedUserId.equals(requestedUserId)) {
+			throw new ForbiddenAccessException(message);
 		}
 	}
 }
