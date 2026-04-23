@@ -4,20 +4,23 @@ import com.oscargsedas.transactionsystem.dto.AccountDto;
 import com.oscargsedas.transactionsystem.dto.AccountRequest;
 import com.oscargsedas.transactionsystem.dto.ApiSuccessResponse;
 import com.oscargsedas.transactionsystem.service.AccountService;
+import com.oscargsedas.transactionsystem.service.LedgerLineService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/v1/accounts")
+@RequestMapping("/api/v1/accounts")
 @RequiredArgsConstructor
 public class AccountController {
 	private final AccountService accountService;
+	private final LedgerLineService ledgerLineService;
 
 	@GetMapping("/{id}")
 	public ResponseEntity<ApiSuccessResponse<AccountDto>> getAccountById(
@@ -36,6 +39,24 @@ public class AccountController {
 		return ResponseEntity.ok(response);
 	}
 
+	@GetMapping("/{id}/balance")
+	public ResponseEntity<ApiSuccessResponse<BigDecimal>> getAccountBalance(
+			@PathVariable UUID id,
+			HttpServletRequest request) {
+		BigDecimal balance = ledgerLineService.getAccountBalance(id);
+
+		ApiSuccessResponse<BigDecimal> response = new ApiSuccessResponse<>(
+				Instant.now(),
+				HttpStatus.OK.value(),
+				"Account balance retrieved successfully",
+				request.getRequestURI(),
+				balance
+		);
+
+		return ResponseEntity.ok(response);
+	}
+
+
 	@PostMapping("/create")
 	public ResponseEntity<ApiSuccessResponse<Void>> createAccount(
 			@RequestBody AccountRequest accountRequest,
@@ -51,24 +72,6 @@ public class AccountController {
 		);
 
 		return ResponseEntity.status(HttpStatus.CREATED).body(response);
-	}
-
-	@PutMapping("/update/{id}")
-	public ResponseEntity<ApiSuccessResponse<Void>> updateAccount(
-			@PathVariable UUID id,
-			@RequestBody AccountRequest accountRequest,
-			HttpServletRequest request) {
-		accountService.updateAccount(id, accountRequest);
-
-		ApiSuccessResponse<Void> response = new ApiSuccessResponse<>(
-				Instant.now(),
-				HttpStatus.OK.value(),
-				"Account updated successfully",
-				request.getRequestURI(),
-				null
-		);
-
-		return ResponseEntity.ok(response);
 	}
 
 	@DeleteMapping("/delete/{id}")
