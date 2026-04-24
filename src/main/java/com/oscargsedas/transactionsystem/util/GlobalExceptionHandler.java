@@ -6,14 +6,17 @@ import com.oscargsedas.transactionsystem.exception.ForbiddenAccessException;
 import com.oscargsedas.transactionsystem.exception.ResourceNotFoundException;
 import com.oscargsedas.transactionsystem.exception.TransactionRetriesExhaustedException;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.Instant;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 	@ExceptionHandler(ResourceNotFoundException.class)
 	public ResponseEntity<ApiErrorResponse> handleNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
@@ -82,6 +85,7 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(TransactionRetriesExhaustedException.class)
 	public ResponseEntity<ApiErrorResponse> handleRetriesExhausted(TransactionRetriesExhaustedException ex, HttpServletRequest request) {
+		log.error("Transaction retries exhausted at path {}", request.getRequestURI(), ex);
 		ApiErrorResponse response = new ApiErrorResponse(
 				Instant.now(),
 				HttpStatus.SERVICE_UNAVAILABLE.value(),
@@ -93,8 +97,23 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
 	}
 
+	@ExceptionHandler(ExhaustedRetryException.class)
+	public ResponseEntity<ApiErrorResponse> handleExhaustedRetry(ExhaustedRetryException ex, HttpServletRequest request) {
+		log.error("Spring retry exhausted at path {}", request.getRequestURI(), ex);
+		ApiErrorResponse response = new ApiErrorResponse(
+				Instant.now(),
+				HttpStatus.SERVICE_UNAVAILABLE.value(),
+				"Service Unavailable",
+				"Transaction failed after retry attempts",
+				request.getRequestURI(),
+				null
+		);
+		return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+	}
+
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ApiErrorResponse> handleUnexpected(Exception ex, HttpServletRequest request) {
+		log.error("Unexpected error at path {}", request.getRequestURI(), ex);
 		ApiErrorResponse response = new ApiErrorResponse(
 				Instant.now(),
 				HttpStatus.INTERNAL_SERVER_ERROR.value(),

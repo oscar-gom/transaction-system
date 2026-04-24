@@ -10,6 +10,7 @@ import com.oscargsedas.transactionsystem.entity.User;
 import com.oscargsedas.transactionsystem.exception.CompletedIdempotencyKeyException;
 import com.oscargsedas.transactionsystem.exception.ForbiddenAccessException;
 import com.oscargsedas.transactionsystem.exception.TransactionProcessingException;
+import com.oscargsedas.transactionsystem.exception.TransactionRetriesExhaustedException;
 import com.oscargsedas.transactionsystem.repository.TransactionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +18,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.TransientDataAccessResourceException;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -103,8 +105,8 @@ class TransactionServiceTest {
 		UUID authenticatedUserId = UUID.randomUUID();
 		UUID idempotencyKey = UUID.randomUUID();
 
-		Account sender = accountOwnedBy(authenticatedUserId);
-		Account receiver = accountOwnedBy(UUID.randomUUID());
+		Account sender = accountOwnedBy(UUID.randomUUID());
+		Account receiver = accountOwnedBy(authenticatedUserId);
 
 		Transaction existing = new Transaction();
 		existing.setId(UUID.randomUUID());
@@ -141,7 +143,7 @@ class TransactionServiceTest {
 		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
 		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
-		when(accountService.getAccountEntityById(receiverId)).thenReturn(receiver);
+		when(accountService.getAnyAccountEntityById(receiverId)).thenReturn(receiver);
 		when(ledgerLineService.getAccountBalance(senderId)).thenReturn(new BigDecimal("100.00"));
 		when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
 			Transaction transaction = invocation.getArgument(0);
@@ -179,7 +181,6 @@ class TransactionServiceTest {
 		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
 		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
-		when(accountService.getAccountEntityById(receiverId)).thenReturn(receiver);
 		when(ledgerLineService.getAccountBalance(senderId)).thenReturn(new BigDecimal("10.00"));
 
 		TransactionRequest request = new TransactionRequest(senderId, receiverId, idempotencyKey, new BigDecimal("50.00"));
@@ -187,6 +188,28 @@ class TransactionServiceTest {
 		assertThrows(IllegalArgumentException.class, () -> transactionService.createTransaction(request));
 		verify(transactionRepository, never()).save(any(Transaction.class));
 		verify(ledgerLineService, never()).createLedgerLinesForTransaction(any(Transaction.class));
+		verify(accountService, never()).getAnyAccountEntityById(receiverId);
+	}
+
+	@Test
+	void createTransactionChecksInsufficientFundsBeforeReceiverOwnership() {
+		UUID authenticatedUserId = UUID.randomUUID();
+		UUID senderId = UUID.randomUUID();
+		UUID receiverId = UUID.randomUUID();
+		UUID idempotencyKey = UUID.randomUUID();
+
+		Account sender = accountOwnedBy(authenticatedUserId);
+		sender.setId(senderId);
+
+		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
+		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
+		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
+		when(ledgerLineService.getAccountBalance(senderId)).thenReturn(new BigDecimal("10.00"));
+
+		TransactionRequest request = new TransactionRequest(senderId, receiverId, idempotencyKey, new BigDecimal("50.00"));
+
+		assertThrows(IllegalArgumentException.class, () -> transactionService.createTransaction(request));
+		verify(accountService, never()).getAnyAccountEntityById(receiverId);
 	}
 
 	@Test
@@ -204,7 +227,7 @@ class TransactionServiceTest {
 		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
 		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
-		when(accountService.getAccountEntityById(receiverId)).thenReturn(receiver);
+		when(accountService.getAnyAccountEntityById(receiverId)).thenReturn(receiver);
 		when(ledgerLineService.getAccountBalance(senderId)).thenReturn(new BigDecimal("90.00"));
 		when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
 			Transaction transaction = invocation.getArgument(0);
@@ -236,7 +259,7 @@ class TransactionServiceTest {
 		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
 		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
-		when(accountService.getAccountEntityById(receiverId)).thenReturn(receiver);
+		when(accountService.getAnyAccountEntityById(receiverId)).thenReturn(receiver);
 		when(ledgerLineService.getAccountBalance(senderId)).thenReturn(new BigDecimal("90.00"));
 		when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
 			Transaction transaction = invocation.getArgument(0);
@@ -273,9 +296,10 @@ class TransactionServiceTest {
 		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
 		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
-		when(accountService.getAccountEntityById(receiverId)).thenReturn(receiver);
+		when(accountService.getAnyAccountEntityById(receiverId)).thenReturn(receiver);
 		when(ledgerLineService.getAccountBalance(senderId)).thenReturn(new BigDecimal("90.00"));
-		when(transactionRepository.save(any(Transaction.class))).thenThrow(new RuntimeException("db temporary error"));
+		when(transactionRepository.save(any(Transaction.class)))
+				.thenThrow(new TransientDataAccessResourceException("db temporary error"));
 
 		TransactionRequest request = new TransactionRequest(senderId, receiverId, idempotencyKey, new BigDecimal("20.00"));
 
@@ -284,11 +308,11 @@ class TransactionServiceTest {
 	}
 
 	@Test
-	void getTransactionByIdFailsWhenTransactionUsesAnotherUsersAccount() {
+	void getTransactionByIdFailsWhenSenderAccountBelongsToAnotherUser() {
 		UUID authenticatedUserId = UUID.randomUUID();
 		UUID transactionId = UUID.randomUUID();
-		Account sender = accountOwnedBy(authenticatedUserId);
-		Account receiver = accountOwnedBy(UUID.randomUUID());
+		Account sender = accountOwnedBy(UUID.randomUUID());
+		Account receiver = accountOwnedBy(authenticatedUserId);
 
 		Transaction transaction = new Transaction();
 		transaction.setId(transactionId);
@@ -301,6 +325,26 @@ class TransactionServiceTest {
 		assertThrows(ForbiddenAccessException.class, () -> transactionService.getTransactionById(transactionId));
 		verify(entityDtoMapper, never()).toTransactionDto(any(Transaction.class));
 	}
+
+	@Test
+	void recoverCreateTransactionThrowsRetriesExhaustedForTechnicalCause() {
+		UUID senderId = UUID.randomUUID();
+		UUID receiverId = UUID.randomUUID();
+		UUID idempotencyKey = UUID.randomUUID();
+		TransactionRequest request = new TransactionRequest(senderId, receiverId, idempotencyKey, new BigDecimal("50.00"));
+
+		TransactionProcessingException retryable = new TransactionProcessingException(
+				"Transient technical error while processing transaction",
+				new RuntimeException("db down")
+		);
+
+		TransactionRetriesExhaustedException thrown = assertThrows(
+				TransactionRetriesExhaustedException.class,
+				() -> transactionService.recoverCreateTransaction(retryable, request)
+		);
+		assertTrue(thrown.getMessage().contains(idempotencyKey.toString()));
+	}
+
 
 	private Account accountOwnedBy(UUID userId) {
 		User user = new User();

@@ -82,6 +82,10 @@ public class AccountService {
 		return account;
 	}
 
+	public Account getAnyAccountEntityById(UUID accountId) {
+		return findAccountOrThrow(accountId);
+	}
+
 	public UUID getAuthenticatedUserId() {
 		return getAuthenticatedUser().getId();
 	}
