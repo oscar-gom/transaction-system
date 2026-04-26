@@ -37,13 +37,13 @@ public class AuthenticationController {
 
 		final UserDetails userDetails = (UserDetails) authentication.getPrincipal();
 		String token = jwtUtils.generateToken(userDetails.getUsername());
-		return ResponseEntity.ok(new AuthResponse("Login successful", token, true));
+		return ResponseEntity.ok(new AuthResponse("Login successful", token, true, null));
 	}
 
 	@PostMapping("/register")
 	public ResponseEntity<AuthResponse> registerUser(@RequestBody UserRequest userRequest) {
 		if (userRepository.existsByEmail(userRequest.getEmail())) {
-			return ResponseEntity.badRequest().body(new AuthResponse("Email is already in use!", null, false));
+			return ResponseEntity.badRequest().body(new AuthResponse("Email is already in use!", null, false, null));
 		}
 
 		final User newUser = new User();
@@ -52,8 +52,8 @@ public class AuthenticationController {
 		newUser.setSurname(userRequest.getSurname());
 		newUser.setPassword(encoder.encode(userRequest.getPassword()));
 
-		userRepository.save(newUser);
-		return ResponseEntity.ok(new AuthResponse("User registered successfully!", null, true));
+		User savedUser = userRepository.save(newUser);
+		return ResponseEntity.ok(new AuthResponse("User registered successfully!", null, true, savedUser.getId()));
 	}
 
 }

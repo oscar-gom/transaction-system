@@ -58,17 +58,17 @@ public class AccountController {
 
 
 	@PostMapping("/create")
-	public ResponseEntity<ApiSuccessResponse<Void>> createAccount(
+	public ResponseEntity<ApiSuccessResponse<AccountDto>> createAccount(
 			@RequestBody AccountRequest accountRequest,
 			HttpServletRequest request) {
-		accountService.createAccount(accountRequest);
+		AccountDto accountDto = accountService.createAccount(accountRequest);
 
-		ApiSuccessResponse<Void> response = new ApiSuccessResponse<>(
+		ApiSuccessResponse<AccountDto> response = new ApiSuccessResponse<>(
 				Instant.now(),
 				HttpStatus.CREATED.value(),
 				"Account created successfully",
 				request.getRequestURI(),
-				null
+				accountDto
 		);
 
 		return ResponseEntity.status(HttpStatus.CREATED).body(response);

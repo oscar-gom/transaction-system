@@ -33,7 +33,7 @@ public class AccountService {
 	private final WelcomeBonusProperties welcomeBonusProperties;
 
 	@Transactional
-	public void createAccount(AccountRequest request) {
+	public AccountDto createAccount(AccountRequest request) {
 		User authenticatedUser = getAuthenticatedUser();
 		assertSameUser(authenticatedUser.getId(), request.userId(), "You cannot create an account for another user");
 
@@ -43,6 +43,8 @@ public class AccountService {
 		if (isFirstAccount) {
 			applyWelcomeBonus(savedAccount);
 		}
+
+		return entityDtoMapper.toAccountDto(savedAccount);
 	}
 
 	private void applyWelcomeBonus(Account receiverAccount) {
