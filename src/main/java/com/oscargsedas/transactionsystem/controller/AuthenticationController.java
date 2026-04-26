@@ -36,8 +36,10 @@ public class AuthenticationController {
 		);
 
 		final UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-		String token = jwtUtils.generateToken(userDetails.getUsername());
-		return ResponseEntity.ok(new AuthResponse("Login successful", token, true, null));
+		String username = userDetails.getUsername();
+		String token = jwtUtils.generateToken(username);
+		User authenticatedUser = userRepository.findByEmail(username);
+		return ResponseEntity.ok(new AuthResponse("Login successful", token, true, authenticatedUser != null ? authenticatedUser.getId() : null));
 	}
 
 	@PostMapping("/register")
