@@ -13,6 +13,9 @@ import com.oscargsedas.transactionsystem.repository.AccountRepository;
 import com.oscargsedas.transactionsystem.repository.TransactionRepository;
 import com.oscargsedas.transactionsystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -24,6 +27,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class AccountService {
+	public static final int PAGE_SIZE = 10;
 	private final AccountRepository accountRepository;
 	private final UserRepository userRepository;
 	private final TransactionRepository transactionRepository;
@@ -68,6 +72,20 @@ public class AccountService {
 		welcomeTransaction.setAmount(welcomeBonusProperties.getAmount());
 		welcomeTransaction.setStatus(TransactionStatus.COMPLETED);
 		return welcomeTransaction;
+	}
+
+	public Page<AccountDto> getAllAccountsForAuthenticatedUser(Pageable pageable) {
+		if (pageable == null) {
+			pageable = PageRequest.of(0, PAGE_SIZE);
+		}
+		if (pageable.getPageNumber() < 0) {
+			throw new IllegalArgumentException("Page index must be zero or positive");
+		}
+
+		Pageable normalizedPageable = PageRequest.of(pageable.getPageNumber(), PAGE_SIZE, pageable.getSort());
+		User authenticatedUser = getAuthenticatedUser();
+		return accountRepository.findAllByUserId(authenticatedUser.getId(), normalizedPageable)
+				.map(entityDtoMapper::toAccountDto);
 	}
 
 	public AccountDto getAccountById(UUID accountId) {

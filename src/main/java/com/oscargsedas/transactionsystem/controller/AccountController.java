@@ -7,6 +7,9 @@ import com.oscargsedas.transactionsystem.service.AccountService;
 import com.oscargsedas.transactionsystem.service.LedgerLineService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +24,24 @@ import java.util.UUID;
 public class AccountController {
 	private final AccountService accountService;
 	private final LedgerLineService ledgerLineService;
+
+	@GetMapping("/all")
+	public ResponseEntity<ApiSuccessResponse<Page<AccountDto>>> getAllAccounts(
+			@RequestParam(defaultValue = "0") int page,
+			HttpServletRequest request) {
+		Pageable pageable = PageRequest.of(page, AccountService.PAGE_SIZE);
+		Page<AccountDto> accounts = accountService.getAllAccountsForAuthenticatedUser(pageable);
+
+		ApiSuccessResponse<Page<AccountDto>> response = new ApiSuccessResponse<>(
+				Instant.now(),
+				HttpStatus.OK.value(),
+				"Accounts retrieved successfully",
+				request.getRequestURI(),
+				accounts
+		);
+
+		return ResponseEntity.ok(response);
+	}
 
 	@GetMapping("/{id}")
 	public ResponseEntity<ApiSuccessResponse<AccountDto>> getAccountById(
