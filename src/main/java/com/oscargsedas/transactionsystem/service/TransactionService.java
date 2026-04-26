@@ -6,6 +6,7 @@ import com.oscargsedas.transactionsystem.dto.TransactionRequest;
 import com.oscargsedas.transactionsystem.entity.Account;
 import com.oscargsedas.transactionsystem.entity.Transaction;
 import com.oscargsedas.transactionsystem.entity.TransactionStatus;
+import com.oscargsedas.transactionsystem.entity.User;
 import com.oscargsedas.transactionsystem.exception.*;
 import com.oscargsedas.transactionsystem.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,12 +21,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class TransactionService {
+
 	private final TransactionRepository transactionRepository;
 	private final AccountService accountService;
 	private final LedgerLineService ledgerLineService;
@@ -46,123 +49,133 @@ public class TransactionService {
 	)
 	@Transactional
 	public TransactionDto createTransaction(TransactionRequest request) {
-		Transaction transaction = createTransactionEntity(request);
+		return entityDtoMapper.toTransactionDto(createTransactionEntity(request));
+	}
+
+	public TransactionDto getTransactionById(UUID transactionId) {
+		UUID userId = accountService.getAuthenticatedUserId();
+		Transaction transaction = transactionRepository.findById(transactionId)
+				.orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + transactionId));
+		validateSenderOwnership(transaction, userId);
 		return entityDtoMapper.toTransactionDto(transaction);
 	}
 
-	public Transaction createTransactionEntity(TransactionRequest request) {
-		UUID authenticatedUserId = accountService.getAuthenticatedUserId();
-		log.info("TX_FLOW create idempotencyKey={} userId={} senderId={} receiverId={} amount={}",
-				request.idempotencyKey(), authenticatedUserId, request.senderId(), request.receiverId(), request.amount());
-
-		Transaction existing = transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElse(null);
-		if (existing != null) {
-			return handleExistingIdempotent(existing, request.idempotencyKey(), authenticatedUserId);
-		}
-		if (request.amount().compareTo(BigDecimal.ZERO) <= 0) {
-			log.warn("TX_FLOW invalid amount={} idempotencyKey={}", request.amount(), request.idempotencyKey());
-			throw new IllegalArgumentException("Amount must be greater than zero");
-		}
-
-		Account sender;
-		try {
-			sender = accountService.getAccountEntityById(request.senderId());
-		} catch (ForbiddenAccessException ex) {
-			log.warn("TX_FLOW forbidden sender access userId={} senderId={}", authenticatedUserId, request.senderId());
-			throw ex;
-		}
-		BigDecimal senderBalance = ledgerLineService.getAccountBalance(sender.getId());
-		log.info("TX_FLOW sender balance accountId={} balance={} amount={}", sender.getId(), senderBalance, request.amount());
-		if (senderBalance.compareTo(request.amount()) < 0) {
-			log.warn("TX_FLOW insufficient funds accountId={} balance={} amount={}", sender.getId(), senderBalance, request.amount());
-			throw new IllegalArgumentException("Insufficient funds");
-		}
-
-		Account receiver = loadReceiverAccount(request.receiverId());
-		Transaction transaction = new Transaction();
-		transaction.setSenderAccount(sender);
-		transaction.setReceiverAccount(receiver);
-		transaction.setIdempotencyKey(request.idempotencyKey());
-		transaction.setAmount(request.amount());
-		transaction.setStatus(TransactionStatus.PENDING);
-
-		return persistAndCompleteTransaction(transaction, request, authenticatedUserId);
+	@Recover
+	public void recoverCreateTransaction(TransactionProcessingException ex, TransactionRequest request) {
+		log.error("TX_FLOW recover exhausted idempotencyKey={} exceptionType={} message={}",
+				request.idempotencyKey(), ex.getClass().getName(), ex.getMessage(), ex);
+		throw new TransactionRetriesExhaustedException(request.idempotencyKey(), ex);
 	}
 
-	private Transaction handleExistingIdempotent(Transaction existing, UUID idempotencyKey, UUID authenticatedUserId) {
-		validateSenderOwnership(existing, authenticatedUserId);
-		if (existing.getStatus() == TransactionStatus.COMPLETED) {
+	public Transaction createTransactionEntity(TransactionRequest request) {
+		UUID userId = accountService.getAuthenticatedUserId();
+		log.info("TX_FLOW create idempotencyKey={} userId={} senderId={} receiverId={} amount={}",
+				request.idempotencyKey(), userId, request.senderId(), request.receiverId(), request.amount());
+
+		return transactionRepository.findByIdempotencyKey(request.idempotencyKey())
+				.map(existing -> resolveIdempotentRequest(existing, request.idempotencyKey(), userId))
+				.orElseGet(() -> createNewTransaction(request, userId));
+	}
+
+	private Transaction createNewTransaction(TransactionRequest request, UUID userId) {
+		validateTransactionRequest(request);
+
+		Account sender = accountService.getAccountEntityById(request.senderId());
+		validateSufficientFunds(sender.getId(), request.amount(), request.idempotencyKey());
+
+		Account receiver = accountService.getAnyAccountEntityById(request.receiverId());
+		Transaction tx = buildPendingTransaction(sender, receiver, request);
+
+		return persistAndCompleteTransaction(tx, request, userId);
+	}
+
+	private Transaction resolveIdempotentRequest(Transaction existing, UUID idempotencyKey, UUID userId) {
+		validateSenderOwnership(existing, userId);
+		if (existing.getStatus() == TransactionStatus.COMPLETED)
 			throw new CompletedIdempotencyKeyException(idempotencyKey);
-		}
 		return existing;
 	}
 
-	private Account loadReceiverAccount(UUID receiverId) {
-		return accountService.getAnyAccountEntityById(receiverId);
+	private Transaction resolveAfterIdempotencyConflict(TransactionRequest request, UUID userId,
+	                                                    DataIntegrityViolationException cause) {
+		Transaction existing = transactionRepository.findByIdempotencyKey(request.idempotencyKey())
+				.orElseThrow(() -> new IllegalStateException(
+						"Idempotency conflict detected but transaction could not be recovered", cause));
+		return resolveIdempotentRequest(existing, request.idempotencyKey(), userId);
 	}
 
-	private Transaction persistAndCompleteTransaction(Transaction transaction, TransactionRequest request, UUID authenticatedUserId) {
+	private Transaction persistAndCompleteTransaction(Transaction tx, TransactionRequest request, UUID userId) {
 		try {
-			Transaction savedTransaction = transactionRepository.save(transaction);
-			ledgerLineService.createLedgerLinesForTransaction(savedTransaction);
+			Transaction saved = transactionRepository.save(tx);
+			ledgerLineService.createLedgerLinesForTransaction(saved);
+			validateLedgerIntegrity(saved);
 
-			long ledgerLineCount = ledgerLineService.countByTransactionId(savedTransaction.getId());
-			if (ledgerLineCount < 2) {
-				log.error("TX_FLOW invalid ledger count transactionId={} count={}", savedTransaction.getId(), ledgerLineCount);
-				throw new IllegalStateException("A completed transaction must have at least two ledger lines");
-			}
+			saved.setStatus(TransactionStatus.COMPLETED);
+			log.info("TX_FLOW completed transactionId={} idempotencyKey={}", saved.getId(), request.idempotencyKey());
+			return transactionRepository.save(saved);
 
-			BigDecimal transactionBalance = ledgerLineService.getTransactionBalance(savedTransaction.getId());
-			if (transactionBalance.compareTo(BigDecimal.ZERO) != 0) {
-				log.error("TX_FLOW unbalanced ledger transactionId={} balance={}", savedTransaction.getId(), transactionBalance);
-				throw new IllegalStateException("Ledger is not balanced for transaction " + savedTransaction.getId());
-			}
-
-			savedTransaction.setStatus(TransactionStatus.COMPLETED);
-			log.info("TX_FLOW completed transactionId={} idempotencyKey={}", savedTransaction.getId(), request.idempotencyKey());
-			return transactionRepository.save(savedTransaction);
 		} catch (DataIntegrityViolationException ex) {
 			log.warn("TX_FLOW idempotency conflict key={}", request.idempotencyKey(), ex);
-			return resolveAfterIdempotencyConflict(request, authenticatedUserId, ex);
+			return resolveAfterIdempotencyConflict(request, userId, ex);
+
 		} catch (TransientDataAccessException ex) {
-			log.warn("TX_FLOW transient technical error key={}", request.idempotencyKey(), ex);
+			log.warn("TX_FLOW transient error key={}", request.idempotencyKey(), ex);
 			throw new TransactionProcessingException("Transient technical error while processing transaction", ex);
+
 		} catch (DataAccessException ex) {
 			log.error("TX_FLOW non-transient data access error key={}", request.idempotencyKey(), ex);
 			throw new IllegalStateException("Failed to persist transaction due to a non-transient data access error", ex);
 		}
 	}
 
-	private Transaction resolveAfterIdempotencyConflict(TransactionRequest request, UUID authenticatedUserId, DataIntegrityViolationException cause) {
-		Transaction existingTransaction = transactionRepository.findByIdempotencyKey(request.idempotencyKey())
-				.orElseThrow(() -> new IllegalStateException("Idempotency conflict detected but transaction could not be recovered", cause));
-		return handleExistingIdempotent(existingTransaction, request.idempotencyKey(), authenticatedUserId);
-	}
-
-	@Recover
-	public TransactionDto recoverCreateTransaction(TransactionProcessingException ex, TransactionRequest request) {
-		log.error("Recover invoked for idempotencyKey={} with exception type={} and message={}",
-				request.idempotencyKey(),
-				ex.getClass().getName(),
-				ex.getMessage(),
-				ex);
-		throw new TransactionRetriesExhaustedException(request.idempotencyKey(), ex);
-	}
-
-
-	public TransactionDto getTransactionById(UUID transactionId) {
-		UUID authenticatedUserId = accountService.getAuthenticatedUserId();
-		Transaction transaction = transactionRepository.findById(transactionId)
-				.orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + transactionId));
-		validateSenderOwnership(transaction, authenticatedUserId);
-		return entityDtoMapper.toTransactionDto(transaction);
-	}
-
-	private void validateSenderOwnership(Transaction transaction, UUID authenticatedUserId) {
-		if (transaction.getSenderAccount() == null || transaction.getSenderAccount().getUser() == null
-				|| transaction.getSenderAccount().getUser().getId() == null
-				|| !transaction.getSenderAccount().getUser().getId().equals(authenticatedUserId)) {
-			throw new ForbiddenAccessException("You do not have permission to access this transaction");
+	private void validateLedgerIntegrity(Transaction tx) {
+		long count = ledgerLineService.countByTransactionId(tx.getId());
+		if (count < 2) {
+			log.error("TX_FLOW invalid ledger count transactionId={} count={}", tx.getId(), count);
+			throw new IllegalStateException("A completed transaction must have at least two ledger lines");
 		}
+
+		BigDecimal balance = ledgerLineService.getTransactionBalance(tx.getId());
+		if (balance.compareTo(BigDecimal.ZERO) != 0) {
+			log.error("TX_FLOW unbalanced ledger transactionId={} balance={}", tx.getId(), balance);
+			throw new IllegalStateException("Ledger is not balanced for transaction " + tx.getId());
+		}
+	}
+
+	private Transaction buildPendingTransaction(Account sender, Account receiver, TransactionRequest request) {
+		var tx = new Transaction();
+		tx.setSenderAccount(sender);
+		tx.setReceiverAccount(receiver);
+		tx.setIdempotencyKey(request.idempotencyKey());
+		tx.setAmount(request.amount());
+		tx.setStatus(TransactionStatus.PENDING);
+		return tx;
+	}
+
+	private void validateTransactionRequest(TransactionRequest request) {
+		if (request.amount().compareTo(BigDecimal.ZERO) <= 0) {
+			log.warn("TX_FLOW invalid amount={} idempotencyKey={}", request.amount(), request.idempotencyKey());
+			throw new IllegalArgumentException("Amount must be greater than zero");
+		}
+	}
+
+	private void validateSufficientFunds(UUID accountId, BigDecimal amount, UUID idempotencyKey) {
+		BigDecimal balance = ledgerLineService.getAccountBalance(accountId);
+		log.info("TX_FLOW sender balance accountId={} balance={} amount={}", accountId, balance, amount);
+		if (balance.compareTo(amount) < 0) {
+			log.warn("TX_FLOW insufficient funds accountId={} balance={} amount={}", accountId, balance, amount);
+			throw new IllegalArgumentException("Insufficient funds");
+		}
+	}
+
+	private void validateSenderOwnership(Transaction transaction, UUID userId) {
+		boolean isOwner = Optional.ofNullable(transaction.getSenderAccount())
+				.map(Account::getUser)
+				.map(User::getId)
+				.filter(userId::equals)
+				.isPresent();
+
+		if (!isOwner)
+			throw new ForbiddenAccessException("You do not have permission to access this transaction");
 	}
 }
