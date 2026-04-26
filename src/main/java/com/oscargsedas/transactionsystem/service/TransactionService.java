@@ -14,6 +14,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.TransientDataAccessException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
@@ -28,7 +31,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 public class TransactionService {
-
+	public static final int PAGE_SIZE = 10;
 	private final TransactionRepository transactionRepository;
 	private final AccountService accountService;
 	private final LedgerLineService ledgerLineService;
@@ -50,6 +53,20 @@ public class TransactionService {
 	@Transactional
 	public TransactionDto createTransaction(TransactionRequest request) {
 		return entityDtoMapper.toTransactionDto(createTransactionEntity(request));
+	}
+
+	public Page<TransactionDto> getTransactionsForAuthenticatedUser(Pageable pageable) {
+		if (pageable == null) {
+			pageable = PageRequest.of(0, PAGE_SIZE);
+		}
+		if (pageable.getPageNumber() < 0) {
+			throw new IllegalArgumentException("Page index must be zero or positive");
+		}
+
+		Pageable normalizedPageable = PageRequest.of(pageable.getPageNumber(), PAGE_SIZE, pageable.getSort());
+		UUID userId = accountService.getAuthenticatedUserId();
+		return transactionRepository.findBySenderAccount_User_IdOrReceiverAccount_User_Id(userId, userId, normalizedPageable)
+				.map(entityDtoMapper::toTransactionDto);
 	}
 
 	public TransactionDto getTransactionById(UUID transactionId) {

@@ -19,8 +19,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.TransientDataAccessResourceException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -45,6 +50,26 @@ class TransactionServiceTest {
 
 	@InjectMocks
 	private TransactionService transactionService;
+
+	@Test
+	void getTransactionsForAuthenticatedUserIncludesSentAndReceivedTransactions() {
+		UUID authenticatedUserId = UUID.randomUUID();
+		Pageable pageable = PageRequest.of(0, TransactionService.PAGE_SIZE);
+		Transaction tx = new Transaction();
+		tx.setId(UUID.randomUUID());
+		TransactionDto dto = new TransactionDto(null, null, tx.getId(), null, null, UUID.randomUUID(), new BigDecimal("10.00"), TransactionStatus.COMPLETED);
+
+		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
+		when(transactionRepository.findBySenderAccount_User_IdOrReceiverAccount_User_Id(authenticatedUserId, authenticatedUserId, pageable))
+				.thenReturn(new PageImpl<>(List.of(tx), pageable, 1));
+		when(entityDtoMapper.toTransactionDto(tx)).thenReturn(dto);
+
+		Page<TransactionDto> result = transactionService.getTransactionsForAuthenticatedUser(pageable);
+
+		assertEquals(1, result.getTotalElements());
+		assertEquals(dto, result.getContent().getFirst());
+		verify(transactionRepository).findBySenderAccount_User_IdOrReceiverAccount_User_Id(authenticatedUserId, authenticatedUserId, pageable);
+	}
 
 	@Test
 	void createTransactionThrowsWhenIdempotencyKeyAlreadyCompleted() {
