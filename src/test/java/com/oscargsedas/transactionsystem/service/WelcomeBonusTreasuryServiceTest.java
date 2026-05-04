@@ -1,0 +1,76 @@
+package com.oscargsedas.transactionsystem.service;
+
+import com.oscargsedas.transactionsystem.entity.Account;
+import com.oscargsedas.transactionsystem.entity.Transaction;
+import com.oscargsedas.transactionsystem.entity.TransactionStatus;
+import com.oscargsedas.transactionsystem.entity.User;
+import com.oscargsedas.transactionsystem.repository.TransactionRepository;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class WelcomeBonusTreasuryServiceTest {
+
+	@Mock
+	private SystemTreasuryAccountService systemTreasuryAccountService;
+
+	@Mock
+	private TransactionRepository transactionRepository;
+
+	@Mock
+	private LedgerLineService ledgerLineService;
+
+	@Mock
+	private WelcomeBonusProperties welcomeBonusProperties;
+
+	@InjectMocks
+	private WelcomeBonusTreasuryService welcomeBonusTreasuryService;
+
+	@Test
+	void applyWelcomeBonusCreatesCompletedTransactionAndLedgerLines() {
+		User receiverUser = new User();
+		receiverUser.setId(UUID.randomUUID());
+
+		Account receiverAccount = new Account();
+		receiverAccount.setId(UUID.randomUUID());
+		receiverAccount.setUser(receiverUser);
+		receiverAccount.setCurrency("EUR");
+
+		Account treasuryAccount = new Account();
+		treasuryAccount.setId(UUID.randomUUID());
+		treasuryAccount.setCurrency("EUR");
+
+		when(systemTreasuryAccountService.getOrCreateTreasuryAccount("EUR")).thenReturn(treasuryAccount);
+		when(welcomeBonusProperties.getAmount()).thenReturn(new BigDecimal("5000.00"));
+		when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
+			Transaction tx = invocation.getArgument(0);
+			tx.setId(UUID.randomUUID());
+			return tx;
+		});
+
+		welcomeBonusTreasuryService.applyWelcomeBonus(receiverAccount);
+
+		ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
+		verify(transactionRepository).save(captor.capture());
+		Transaction savedTx = captor.getValue();
+
+		assertEquals(treasuryAccount, savedTx.getSenderAccount());
+		assertEquals(receiverAccount, savedTx.getReceiverAccount());
+		assertEquals(new BigDecimal("5000.00"), savedTx.getAmount());
+		assertEquals(TransactionStatus.COMPLETED, savedTx.getStatus());
+		verify(ledgerLineService).createLedgerLinesForTransaction(savedTx);
+	}
+}
+

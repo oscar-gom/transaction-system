@@ -3,17 +3,13 @@ package com.oscargsedas.transactionsystem.service;
 import com.oscargsedas.transactionsystem.dto.AccountRequest;
 import com.oscargsedas.transactionsystem.dto.EntityDtoMapper;
 import com.oscargsedas.transactionsystem.entity.Account;
-import com.oscargsedas.transactionsystem.entity.Transaction;
-import com.oscargsedas.transactionsystem.entity.TransactionStatus;
 import com.oscargsedas.transactionsystem.entity.User;
 import com.oscargsedas.transactionsystem.exception.ForbiddenAccessException;
 import com.oscargsedas.transactionsystem.repository.AccountRepository;
-import com.oscargsedas.transactionsystem.repository.TransactionRepository;
 import com.oscargsedas.transactionsystem.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -38,19 +34,13 @@ class AccountServiceTest {
 	private UserRepository userRepository;
 
 	@Mock
-	private TransactionRepository transactionRepository;
-
-	@Mock
 	private EntityDtoMapper entityDtoMapper;
 
 	@Mock
 	private LedgerLineService ledgerLineService;
 
 	@Mock
-	private SystemTreasuryAccountService systemTreasuryAccountService;
-
-	@Mock
-	private WelcomeBonusProperties welcomeBonusProperties;
+	private WelcomeBonusTreasuryService welcomeBonusTreasuryService;
 
 	@InjectMocks
 	private AccountService accountService;
@@ -80,30 +70,11 @@ class AccountServiceTest {
 			}
 			return account;
 		});
-		Account treasuryAccount = new Account();
-		treasuryAccount.setId(UUID.randomUUID());
-		treasuryAccount.setCurrency("EUR");
-		when(systemTreasuryAccountService.getOrCreateTreasuryAccount("EUR")).thenReturn(treasuryAccount);
-		when(welcomeBonusProperties.getAmount()).thenReturn(new BigDecimal("5000.00"));
-		when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
-			Transaction transaction = invocation.getArgument(0);
-			if (transaction.getId() == null) {
-				transaction.setId(UUID.randomUUID());
-			}
-			return transaction;
-		});
 		when(entityDtoMapper.toAccountDto(any(Account.class))).thenReturn(null);
 
 		accountService.createAccount(new AccountRequest("EUR"));
 
-		ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
-		verify(transactionRepository).save(transactionCaptor.capture());
-		Transaction transaction = transactionCaptor.getValue();
-
-		assertEquals(new BigDecimal("5000.00"), transaction.getAmount());
-		assertEquals(TransactionStatus.COMPLETED, transaction.getStatus());
-		assertEquals(userId, transaction.getReceiverAccount().getUser().getId());
-		verify(ledgerLineService, times(1)).createLedgerLinesForTransaction(any(Transaction.class));
+		verify(welcomeBonusTreasuryService).applyWelcomeBonus(any(Account.class));
 	}
 
 	@Test
@@ -119,10 +90,10 @@ class AccountServiceTest {
 
 		when(userRepository.findByEmail("user@example.com")).thenReturn(authenticatedUser);
 		when(accountRepository.countByUserId(userId)).thenReturn(1L);
+
 		assertThrows(ForbiddenAccessException.class, () -> accountService.createAccount(new AccountRequest("EUR")));
 
-		verify(transactionRepository, never()).save(any(Transaction.class));
-		verify(ledgerLineService, never()).createLedgerLinesForTransaction(any(Transaction.class));
+		verify(welcomeBonusTreasuryService, never()).applyWelcomeBonus(any(Account.class));
 		verify(accountRepository, never()).save(any(Account.class));
 	}
 

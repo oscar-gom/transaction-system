@@ -4,13 +4,10 @@ import com.oscargsedas.transactionsystem.dto.AccountDto;
 import com.oscargsedas.transactionsystem.dto.AccountRequest;
 import com.oscargsedas.transactionsystem.dto.EntityDtoMapper;
 import com.oscargsedas.transactionsystem.entity.Account;
-import com.oscargsedas.transactionsystem.entity.Transaction;
-import com.oscargsedas.transactionsystem.entity.TransactionStatus;
 import com.oscargsedas.transactionsystem.entity.User;
 import com.oscargsedas.transactionsystem.exception.ForbiddenAccessException;
 import com.oscargsedas.transactionsystem.exception.ResourceNotFoundException;
 import com.oscargsedas.transactionsystem.repository.AccountRepository;
-import com.oscargsedas.transactionsystem.repository.TransactionRepository;
 import com.oscargsedas.transactionsystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -30,11 +27,9 @@ public class AccountService {
 	public static final int PAGE_SIZE = 10;
 	private final AccountRepository accountRepository;
 	private final UserRepository userRepository;
-	private final TransactionRepository transactionRepository;
 	private final EntityDtoMapper entityDtoMapper;
 	private final LedgerLineService ledgerLineService;
-	private final SystemTreasuryAccountService systemTreasuryAccountService;
-	private final WelcomeBonusProperties welcomeBonusProperties;
+	private final WelcomeBonusTreasuryService welcomeBonusTreasuryService;
 
 	@Transactional
 	public AccountDto createAccount(AccountRequest request) {
@@ -47,7 +42,7 @@ public class AccountService {
 		Account savedAccount = accountRepository.save(buildAccount(authenticatedUser, request.currency()));
 
 
-		applyWelcomeBonus(savedAccount);
+		welcomeBonusTreasuryService.applyWelcomeBonus(savedAccount);
 
 		return entityDtoMapper.toAccountDto(savedAccount);
 	}
@@ -66,12 +61,6 @@ public class AccountService {
 		return ledgerLineService.getAccountBalance(account.getId());
 	}
 
-	private void applyWelcomeBonus(Account receiverAccount) {
-		Account treasuryAccount = systemTreasuryAccountService.getOrCreateTreasuryAccount(receiverAccount.getCurrency());
-		Transaction savedTransaction = transactionRepository.save(buildWelcomeTransaction(treasuryAccount, receiverAccount));
-		ledgerLineService.createLedgerLinesForTransaction(savedTransaction);
-	}
-
 	private Account buildAccount(User authenticatedUser, String currency) {
 		Account account = new Account();
 		account.setUser(authenticatedUser);
@@ -79,15 +68,6 @@ public class AccountService {
 		return account;
 	}
 
-	private Transaction buildWelcomeTransaction(Account senderAccount, Account receiverAccount) {
-		Transaction welcomeTransaction = new Transaction();
-		welcomeTransaction.setSenderAccount(senderAccount);
-		welcomeTransaction.setReceiverAccount(receiverAccount);
-		welcomeTransaction.setIdempotencyKey(UUID.randomUUID());
-		welcomeTransaction.setAmount(welcomeBonusProperties.getAmount());
-		welcomeTransaction.setStatus(TransactionStatus.COMPLETED);
-		return welcomeTransaction;
-	}
 
 	public Page<AccountDto> getAllAccountsForAuthenticatedUser(Pageable pageable) {
 		if (pageable == null) {
