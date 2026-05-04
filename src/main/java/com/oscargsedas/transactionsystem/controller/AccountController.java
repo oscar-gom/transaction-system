@@ -4,6 +4,8 @@ import com.oscargsedas.transactionsystem.dto.AccountDto;
 import com.oscargsedas.transactionsystem.dto.AccountRequest;
 import com.oscargsedas.transactionsystem.dto.ApiSuccessResponse;
 import com.oscargsedas.transactionsystem.service.AccountService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,10 +23,12 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/accounts")
 @RequiredArgsConstructor
+@Tag(name = "Accounts", description = "Endpoints to manage user accounts and balances")
 public class AccountController {
 	private final AccountService accountService;
 
 	@GetMapping("/all")
+	@Operation(summary = "List accounts", description = "List paginated accounts for the authenticated user")
 	public ResponseEntity<ApiSuccessResponse<Page<AccountDto>>> getAllAccounts(
 			@RequestParam(defaultValue = "0") int page,
 			HttpServletRequest request) {
@@ -43,6 +47,7 @@ public class AccountController {
 	}
 
 	@GetMapping("/{id}")
+	@Operation(summary = "Get account by id", description = "Retrieve an account by its id. Only the owner can access this resource")
 	public ResponseEntity<ApiSuccessResponse<AccountDto>> getAccountById(
 			@PathVariable UUID id,
 			HttpServletRequest request) {
@@ -60,6 +65,7 @@ public class AccountController {
 	}
 
 	@GetMapping("/{id}/balance")
+	@Operation(summary = "Get account balance", description = "Retrieve the balance for the specified account if it belongs to the authenticated user")
 	public ResponseEntity<ApiSuccessResponse<BigDecimal>> getAccountBalance(
 			@PathVariable UUID id,
 			HttpServletRequest request) {
@@ -77,6 +83,7 @@ public class AccountController {
 	}
 
 	@GetMapping("/me")
+	@Operation(summary = "Get my account", description = "Return the account of the currently authenticated user")
 	public ResponseEntity<ApiSuccessResponse<AccountDto>> getMyAccount(HttpServletRequest request) {
 		AccountDto accountDto = accountService.getAuthenticatedUserAccount();
 
@@ -92,6 +99,7 @@ public class AccountController {
 	}
 
 	@GetMapping("/me/balance")
+	@Operation(summary = "Get my account balance", description = "Return the balance of the currently authenticated user's account")
 	public ResponseEntity<ApiSuccessResponse<BigDecimal>> getMyAccountBalance(HttpServletRequest request) {
 		BigDecimal balance = accountService.getAuthenticatedUserAccountBalance();
 
@@ -108,6 +116,7 @@ public class AccountController {
 
 
 	@PostMapping("/create")
+	@Operation(summary = "Create account", description = "Create an account for the authenticated user. Each user may have only one account.")
 	public ResponseEntity<ApiSuccessResponse<AccountDto>> createAccount(
 			@Valid @RequestBody AccountRequest accountRequest,
 			HttpServletRequest request) {

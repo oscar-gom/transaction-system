@@ -5,6 +5,8 @@ import com.oscargsedas.transactionsystem.dto.UserRequest;
 import com.oscargsedas.transactionsystem.entity.User;
 import com.oscargsedas.transactionsystem.repository.UserRepository;
 import com.oscargsedas.transactionsystem.security.JwtUtil;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
+@Tag(name = "Authentication", description = "Register and login endpoints")
 public class AuthenticationController {
 	private final AuthenticationManager authenticationManager;
 	private final UserRepository userRepository;
@@ -28,6 +31,7 @@ public class AuthenticationController {
 	private final JwtUtil jwtUtils;
 
 	@PostMapping("/login")
+	@Operation(summary = "Login", description = "Authenticate a user and return a JWT token and user id")
 	public ResponseEntity<AuthResponse> authenticateUser(@Valid @RequestBody UserRequest userRequest) {
 		Authentication authentication = authenticationManager.authenticate(
 				new UsernamePasswordAuthenticationToken(
@@ -44,6 +48,7 @@ public class AuthenticationController {
 	}
 
 	@PostMapping("/register")
+	@Operation(summary = "Register", description = "Register a new user and return the new user's id")
 	public ResponseEntity<AuthResponse> registerUser(@Valid @RequestBody UserRequest userRequest) {
 		if (userRepository.existsByEmail(userRequest.getEmail())) {
 			return ResponseEntity.badRequest().body(new AuthResponse("Email is already in use!", null, false, null));
