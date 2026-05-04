@@ -92,7 +92,7 @@ class AccountServiceTest {
 		});
 		when(entityDtoMapper.toAccountDto(any(Account.class))).thenReturn(null);
 
-		accountService.createAccount(new AccountRequest(userId, "EUR"));
+		accountService.createAccount(new AccountRequest("EUR"));
 
 		ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
 		verify(transactionRepository).save(transactionCaptor.capture());
@@ -126,7 +126,7 @@ class AccountServiceTest {
 		});
 		when(entityDtoMapper.toAccountDto(any(Account.class))).thenReturn(null);
 
-		accountService.createAccount(new AccountRequest(userId, "EUR"));
+		accountService.createAccount(new AccountRequest("EUR"));
 
 		verify(transactionRepository, never()).save(any(Transaction.class));
 		verify(ledgerLineService, never()).createLedgerLinesForTransaction(any(Transaction.class));

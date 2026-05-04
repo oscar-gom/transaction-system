@@ -39,16 +39,31 @@ public class AccountService {
 	@Transactional
 	public AccountDto createAccount(AccountRequest request) {
 		User authenticatedUser = getAuthenticatedUser();
-		assertSameUser(authenticatedUser.getId(), request.userId(), "You cannot create an account for another user");
-
-		boolean isFirstAccount = accountRepository.countByUserId(authenticatedUser.getId()) == 0;
-		Account savedAccount = accountRepository.save(buildAccount(authenticatedUser, request.currency()));
-
-		if (isFirstAccount) {
-			applyWelcomeBonus(savedAccount);
+		long existing = accountRepository.countByUserId(authenticatedUser.getId());
+		if (existing > 0) {
+			throw new ForbiddenAccessException("Each user can only have one account");
 		}
 
+		Account savedAccount = accountRepository.save(buildAccount(authenticatedUser, request.currency()));
+
+
+		applyWelcomeBonus(savedAccount);
+
 		return entityDtoMapper.toAccountDto(savedAccount);
+	}
+
+	public AccountDto getAuthenticatedUserAccount() {
+		User authenticatedUser = getAuthenticatedUser();
+		Account account = accountRepository.findByUserId(authenticatedUser.getId())
+				.orElseThrow(() -> new ResourceNotFoundException("Account not found for authenticated user"));
+		return entityDtoMapper.toAccountDto(account);
+	}
+
+	public BigDecimal getAuthenticatedUserAccountBalance() {
+		User authenticatedUser = getAuthenticatedUser();
+		Account account = accountRepository.findByUserId(authenticatedUser.getId())
+				.orElseThrow(() -> new ResourceNotFoundException("Account not found for authenticated user"));
+		return ledgerLineService.getAccountBalance(account.getId());
 	}
 
 	private void applyWelcomeBonus(Account receiverAccount) {
@@ -119,10 +134,7 @@ public class AccountService {
 		User authenticatedUser = getAuthenticatedUser();
 		Account account = findAccountOrThrow(accountId);
 		validateOwnershipOrThrow(authenticatedUser.getId(), account);
-		assertSameUser(authenticatedUser.getId(), request.userId(), "You cannot change the owner of the account");
-
 		account.setCurrency(request.currency());
-
 		accountRepository.save(account);
 	}
 
@@ -161,12 +173,6 @@ public class AccountService {
 	private void validateOwnershipOrThrow(UUID authenticatedUserId, Account account) {
 		if (account.getUser() == null || account.getUser().getId() == null || !account.getUser().getId().equals(authenticatedUserId)) {
 			throw new ForbiddenAccessException("You do not have permission to access this account");
-		}
-	}
-
-	private void assertSameUser(UUID authenticatedUserId, UUID requestedUserId, String message) {
-		if (!authenticatedUserId.equals(requestedUserId)) {
-			throw new ForbiddenAccessException(message);
 		}
 	}
 }

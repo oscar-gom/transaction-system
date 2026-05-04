@@ -23,8 +23,8 @@ public class Account extends BaseEntity {
 	private UUID id;
 
 	@ToString.Exclude
-	@ManyToOne(optional = false)
-	@JoinColumn(name = "user_id", nullable = false)
+	@OneToOne(optional = false)
+	@JoinColumn(name = "user_id", nullable = false, unique = true)
 	private User user;
 
 	@Column(nullable = false, length = 3)

@@ -5,8 +5,6 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
-import java.util.LinkedHashSet;
-import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -33,7 +31,7 @@ public class User extends BaseEntity {
 	@NotNull
 	private String password;
 
-	@OneToMany(mappedBy = "user")
-	private Set<Account> accounts = new LinkedHashSet<>();
+	@OneToOne(mappedBy = "user")
+	private Account account;
 
 }

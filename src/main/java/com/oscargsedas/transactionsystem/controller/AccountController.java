@@ -76,6 +76,36 @@ public class AccountController {
 		return ResponseEntity.ok(response);
 	}
 
+	@GetMapping("/me")
+	public ResponseEntity<ApiSuccessResponse<AccountDto>> getMyAccount(HttpServletRequest request) {
+		AccountDto accountDto = accountService.getAuthenticatedUserAccount();
+
+		ApiSuccessResponse<AccountDto> response = new ApiSuccessResponse<>(
+				Instant.now(),
+				HttpStatus.OK.value(),
+				"Authenticated user's account retrieved successfully",
+				request.getRequestURI(),
+				accountDto
+		);
+
+		return ResponseEntity.ok(response);
+	}
+
+	@GetMapping("/me/balance")
+	public ResponseEntity<ApiSuccessResponse<BigDecimal>> getMyAccountBalance(HttpServletRequest request) {
+		BigDecimal balance = accountService.getAuthenticatedUserAccountBalance();
+
+		ApiSuccessResponse<BigDecimal> response = new ApiSuccessResponse<>(
+				Instant.now(),
+				HttpStatus.OK.value(),
+				"Authenticated user's account balance retrieved successfully",
+				request.getRequestURI(),
+				balance
+		);
+
+		return ResponseEntity.ok(response);
+	}
+
 
 	@PostMapping("/create")
 	public ResponseEntity<ApiSuccessResponse<AccountDto>> createAccount(
