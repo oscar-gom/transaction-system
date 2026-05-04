@@ -90,6 +90,7 @@ class AccountServiceTest {
 			}
 			return transaction;
 		});
+		when(entityDtoMapper.toAccountDto(any(Account.class))).thenReturn(null);
 
 		accountService.createAccount(new AccountRequest(userId, "EUR"));
 
@@ -123,11 +124,39 @@ class AccountServiceTest {
 			}
 			return account;
 		});
+		when(entityDtoMapper.toAccountDto(any(Account.class))).thenReturn(null);
 
 		accountService.createAccount(new AccountRequest(userId, "EUR"));
 
 		verify(transactionRepository, never()).save(any(Transaction.class));
 		verify(ledgerLineService, never()).createLedgerLinesForTransaction(any(Transaction.class));
+	}
+
+	@Test
+	void getAccountBalanceForAuthenticatedUserReturnsBalanceOnlyForOwnedAccount() {
+		UUID userId = UUID.randomUUID();
+		UUID accountId = UUID.randomUUID();
+		User authenticatedUser = new User();
+		authenticatedUser.setId(userId);
+		authenticatedUser.setEmail("user@example.com");
+
+		SecurityContextHolder.getContext().setAuthentication(
+				new UsernamePasswordAuthenticationToken("user@example.com", "n/a")
+		);
+
+		Account account = new Account();
+		account.setId(accountId);
+		account.setUser(authenticatedUser);
+		account.setCurrency("EUR");
+
+		when(userRepository.findByEmail("user@example.com")).thenReturn(authenticatedUser);
+		when(accountRepository.findById(accountId)).thenReturn(java.util.Optional.of(account));
+		when(ledgerLineService.getAccountBalance(accountId)).thenReturn(new BigDecimal("123.45"));
+
+		BigDecimal balance = accountService.getAccountBalanceForAuthenticatedUser(accountId);
+
+		assertEquals(new BigDecimal("123.45"), balance);
+		verify(ledgerLineService).getAccountBalance(accountId);
 	}
 }
 

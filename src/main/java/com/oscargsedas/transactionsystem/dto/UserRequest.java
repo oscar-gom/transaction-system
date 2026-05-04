@@ -1,6 +1,7 @@
 package com.oscargsedas.transactionsystem.dto;
 
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -13,11 +14,11 @@ public class UserRequest {
 	@NotNull
 	@Email(message = "email must be a valid email address")
     private String email;
-	@NotNull
+	@NotBlank(message = "name is mandatory")
     private String name;
-	@NotNull
+	@NotBlank(message = "surname is mandatory")
     private String surname;
-	@NotNull
+	@NotBlank(message = "password is mandatory")
     private String password;
 }
 

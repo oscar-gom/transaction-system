@@ -4,8 +4,8 @@ import com.oscargsedas.transactionsystem.dto.AccountDto;
 import com.oscargsedas.transactionsystem.dto.AccountRequest;
 import com.oscargsedas.transactionsystem.dto.ApiSuccessResponse;
 import com.oscargsedas.transactionsystem.service.AccountService;
-import com.oscargsedas.transactionsystem.service.LedgerLineService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -23,7 +23,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AccountController {
 	private final AccountService accountService;
-	private final LedgerLineService ledgerLineService;
 
 	@GetMapping("/all")
 	public ResponseEntity<ApiSuccessResponse<Page<AccountDto>>> getAllAccounts(
@@ -64,7 +63,7 @@ public class AccountController {
 	public ResponseEntity<ApiSuccessResponse<BigDecimal>> getAccountBalance(
 			@PathVariable UUID id,
 			HttpServletRequest request) {
-		BigDecimal balance = ledgerLineService.getAccountBalance(id);
+		BigDecimal balance = accountService.getAccountBalanceForAuthenticatedUser(id);
 
 		ApiSuccessResponse<BigDecimal> response = new ApiSuccessResponse<>(
 				Instant.now(),
@@ -80,7 +79,7 @@ public class AccountController {
 
 	@PostMapping("/create")
 	public ResponseEntity<ApiSuccessResponse<AccountDto>> createAccount(
-			@RequestBody AccountRequest accountRequest,
+			@Valid @RequestBody AccountRequest accountRequest,
 			HttpServletRequest request) {
 		AccountDto accountDto = accountService.createAccount(accountRequest);
 

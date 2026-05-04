@@ -131,7 +131,7 @@ class TransactionServiceTest {
 		UUID idempotencyKey = UUID.randomUUID();
 
 		Account sender = accountOwnedBy(UUID.randomUUID());
-		Account receiver = accountOwnedBy(authenticatedUserId);
+		Account receiver = accountOwnedBy(UUID.randomUUID());
 
 		Transaction existing = new Transaction();
 		existing.setId(UUID.randomUUID());
@@ -333,11 +333,11 @@ class TransactionServiceTest {
 	}
 
 	@Test
-	void getTransactionByIdFailsWhenSenderAccountBelongsToAnotherUser() {
+	void getTransactionByIdFailsWhenUserIsNeitherSenderNorReceiver() {
 		UUID authenticatedUserId = UUID.randomUUID();
 		UUID transactionId = UUID.randomUUID();
 		Account sender = accountOwnedBy(UUID.randomUUID());
-		Account receiver = accountOwnedBy(authenticatedUserId);
+		Account receiver = accountOwnedBy(UUID.randomUUID());
 
 		Transaction transaction = new Transaction();
 		transaction.setId(transactionId);
@@ -349,6 +349,30 @@ class TransactionServiceTest {
 
 		assertThrows(ForbiddenAccessException.class, () -> transactionService.getTransactionById(transactionId));
 		verify(entityDtoMapper, never()).toTransactionDto(any(Transaction.class));
+	}
+
+	@Test
+	void getTransactionByIdAllowsReceiverAccess() {
+		UUID authenticatedUserId = UUID.randomUUID();
+		UUID transactionId = UUID.randomUUID();
+		Account sender = accountOwnedBy(UUID.randomUUID());
+		Account receiver = accountOwnedBy(authenticatedUserId);
+
+		Transaction transaction = new Transaction();
+		transaction.setId(transactionId);
+		transaction.setSenderAccount(sender);
+		transaction.setReceiverAccount(receiver);
+
+		TransactionDto mapped = new TransactionDto(null, null, transactionId, null, null, UUID.randomUUID(), new BigDecimal("15.00"), TransactionStatus.COMPLETED);
+
+		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
+		when(transactionRepository.findById(transactionId)).thenReturn(Optional.of(transaction));
+		when(entityDtoMapper.toTransactionDto(transaction)).thenReturn(mapped);
+
+		TransactionDto result = transactionService.getTransactionById(transactionId);
+
+		assertSame(mapped, result);
+		verify(entityDtoMapper).toTransactionDto(transaction);
 	}
 
 	@Test

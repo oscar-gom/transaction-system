@@ -5,6 +5,7 @@ import com.oscargsedas.transactionsystem.dto.TransactionDto;
 import com.oscargsedas.transactionsystem.dto.TransactionRequest;
 import com.oscargsedas.transactionsystem.service.TransactionService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -61,7 +62,7 @@ public class TransactionController {
 
 	@PostMapping("/create")
 	public ResponseEntity<ApiSuccessResponse<TransactionDto>> createTransaction(
-			@RequestBody TransactionRequest transactionRequest,
+			@Valid @RequestBody TransactionRequest transactionRequest,
 			HttpServletRequest request
 	) {
 		TransactionDto transactionDto = transactionService.createTransaction(transactionRequest);

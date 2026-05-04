@@ -102,11 +102,16 @@ public class AccountService {
 		return account;
 	}
 
-	public Account getAnyAccountEntityById(UUID accountId) {
+	public BigDecimal getAccountBalanceForAuthenticatedUser(UUID accountId) {
+		getAccountEntityById(accountId);
+		return ledgerLineService.getAccountBalance(accountId);
+	}
+
+	Account getAnyAccountEntityById(UUID accountId) {
 		return findAccountOrThrow(accountId);
 	}
 
-	public UUID getAuthenticatedUserId() {
+	UUID getAuthenticatedUserId() {
 		return getAuthenticatedUser().getId();
 	}
 

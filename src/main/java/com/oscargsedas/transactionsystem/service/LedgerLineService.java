@@ -17,7 +17,7 @@ public class LedgerLineService {
 	private final LedgerLineRepository ledgerLineRepository;
 	private final AccountRepository accountRepository;
 
-	public void createLedgerLinesForTransaction(Transaction transaction) {
+	void createLedgerLinesForTransaction(Transaction transaction) {
 
 		var senderLedgerLine = new LedgerLine();
 		senderLedgerLine.setTransaction(transaction);
@@ -33,7 +33,7 @@ public class LedgerLineService {
 		ledgerLineRepository.save(receiverLedgerLine);
 	}
 
-	public BigDecimal getAccountBalance(UUID accountId) {
+	BigDecimal getAccountBalance(UUID accountId) {
 		if (!accountRepository.existsById(accountId)) {
 			throw new ResourceNotFoundException("Account not found with id: " + accountId);
 		}
@@ -41,11 +41,11 @@ public class LedgerLineService {
 		return ledgerLineRepository.getAccountBalance(accountId);
 	}
 
-	public BigDecimal getTransactionBalance(UUID transactionId) {
+	BigDecimal getTransactionBalance(UUID transactionId) {
 		return ledgerLineRepository.getTransactionBalance(transactionId);
 	}
 
-	public long countByTransactionId(UUID transactionId) {
+	long countByTransactionId(UUID transactionId) {
 		return ledgerLineRepository.countByTransactionId(transactionId);
 	}
 }

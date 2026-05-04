@@ -14,7 +14,7 @@ public class SystemTreasuryAccountService {
 	private final UserRepository userRepository;
 	private final WelcomeBonusProperties welcomeBonusProperties;
 
-	public Account getOrCreateTreasuryAccount(String currency) {
+	Account getOrCreateTreasuryAccount(String currency) {
 		User systemUser = getOrCreateSystemUser();
 		return accountRepository.findByUserIdAndCurrency(systemUser.getId(), currency)
 				.orElseGet(() -> {

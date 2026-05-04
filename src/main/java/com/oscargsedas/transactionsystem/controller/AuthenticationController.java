@@ -5,6 +5,7 @@ import com.oscargsedas.transactionsystem.dto.UserRequest;
 import com.oscargsedas.transactionsystem.entity.User;
 import com.oscargsedas.transactionsystem.repository.UserRepository;
 import com.oscargsedas.transactionsystem.security.JwtUtil;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -27,7 +28,7 @@ public class AuthenticationController {
 	private final JwtUtil jwtUtils;
 
 	@PostMapping("/login")
-	public ResponseEntity<AuthResponse> authenticateUser(@RequestBody UserRequest userRequest) {
+	public ResponseEntity<AuthResponse> authenticateUser(@Valid @RequestBody UserRequest userRequest) {
 		Authentication authentication = authenticationManager.authenticate(
 				new UsernamePasswordAuthenticationToken(
 						userRequest.getEmail(),
@@ -36,14 +37,14 @@ public class AuthenticationController {
 		);
 
 		final UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-		String username = userDetails.getUsername();
+		String username = authentication.getName();
 		String token = jwtUtils.generateToken(username);
 		User authenticatedUser = userRepository.findByEmail(username);
 		return ResponseEntity.ok(new AuthResponse("Login successful", token, true, authenticatedUser != null ? authenticatedUser.getId() : null));
 	}
 
 	@PostMapping("/register")
-	public ResponseEntity<AuthResponse> registerUser(@RequestBody UserRequest userRequest) {
+	public ResponseEntity<AuthResponse> registerUser(@Valid @RequestBody UserRequest userRequest) {
 		if (userRepository.existsByEmail(userRequest.getEmail())) {
 			return ResponseEntity.badRequest().body(new AuthResponse("Email is already in use!", null, false, null));
 		}

@@ -73,7 +73,7 @@ public class TransactionService {
 		UUID userId = accountService.getAuthenticatedUserId();
 		Transaction transaction = transactionRepository.findById(transactionId)
 				.orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + transactionId));
-		validateSenderOwnership(transaction, userId);
+		validateTransactionAccess(transaction, userId);
 		return entityDtoMapper.toTransactionDto(transaction);
 	}
 
@@ -107,7 +107,7 @@ public class TransactionService {
 	}
 
 	private Transaction resolveIdempotentRequest(Transaction existing, UUID idempotencyKey, UUID userId) {
-		validateSenderOwnership(existing, userId);
+		validateTransactionAccess(existing, userId);
 		if (existing.getStatus() == TransactionStatus.COMPLETED)
 			throw new CompletedIdempotencyKeyException(idempotencyKey);
 		return existing;
@@ -185,14 +185,19 @@ public class TransactionService {
 		}
 	}
 
-	private void validateSenderOwnership(Transaction transaction, UUID userId) {
-		boolean isOwner = Optional.ofNullable(transaction.getSenderAccount())
+	private void validateTransactionAccess(Transaction transaction, UUID userId) {
+		boolean isSender = Optional.ofNullable(transaction.getSenderAccount())
+				.map(Account::getUser)
+				.map(User::getId)
+				.filter(userId::equals)
+				.isPresent();
+		boolean isReceiver = Optional.ofNullable(transaction.getReceiverAccount())
 				.map(Account::getUser)
 				.map(User::getId)
 				.filter(userId::equals)
 				.isPresent();
 
-		if (!isOwner)
+		if (!isSender && !isReceiver)
 			throw new ForbiddenAccessException("You do not have permission to access this transaction");
 	}
 }
