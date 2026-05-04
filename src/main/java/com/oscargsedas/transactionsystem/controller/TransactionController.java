@@ -20,7 +20,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/transactions")
+@RequestMapping("/api/v2/transactions")
 @RequiredArgsConstructor
 @Tag(name = "Transactions", description = "Endpoints to create and view transactions")
 public class TransactionController {
