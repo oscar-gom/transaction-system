@@ -46,42 +46,6 @@ public class AccountController {
 		return ResponseEntity.ok(response);
 	}
 
-	@GetMapping("/{id}")
-	@Operation(summary = "Get account by id", description = "Retrieve an account by its id. Only the owner can access this resource")
-	public ResponseEntity<ApiSuccessResponse<AccountDto>> getAccountById(
-			@PathVariable UUID id,
-			HttpServletRequest request) {
-		AccountDto accountDto = accountService.getAccountById(id);
-
-		ApiSuccessResponse<AccountDto> response = new ApiSuccessResponse<>(
-				Instant.now(),
-				HttpStatus.OK.value(),
-				"Account retrieved successfully",
-				request.getRequestURI(),
-				accountDto
-		);
-
-		return ResponseEntity.ok(response);
-	}
-
-	@GetMapping("/{id}/balance")
-	@Operation(summary = "Get account balance", description = "Retrieve the balance for the specified account if it belongs to the authenticated user")
-	public ResponseEntity<ApiSuccessResponse<BigDecimal>> getAccountBalance(
-			@PathVariable UUID id,
-			HttpServletRequest request) {
-		BigDecimal balance = accountService.getAccountBalanceForAuthenticatedUser(id);
-
-		ApiSuccessResponse<BigDecimal> response = new ApiSuccessResponse<>(
-				Instant.now(),
-				HttpStatus.OK.value(),
-				"Account balance retrieved successfully",
-				request.getRequestURI(),
-				balance
-		);
-
-		return ResponseEntity.ok(response);
-	}
-
 	@GetMapping("/me")
 	@Operation(summary = "Get my account", description = "Return the account of the currently authenticated user")
 	public ResponseEntity<ApiSuccessResponse<AccountDto>> getMyAccount(HttpServletRequest request) {

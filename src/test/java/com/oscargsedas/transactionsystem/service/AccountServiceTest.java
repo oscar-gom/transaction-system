@@ -6,6 +6,7 @@ import com.oscargsedas.transactionsystem.entity.Account;
 import com.oscargsedas.transactionsystem.entity.Transaction;
 import com.oscargsedas.transactionsystem.entity.TransactionStatus;
 import com.oscargsedas.transactionsystem.entity.User;
+import com.oscargsedas.transactionsystem.exception.ForbiddenAccessException;
 import com.oscargsedas.transactionsystem.repository.AccountRepository;
 import com.oscargsedas.transactionsystem.repository.TransactionRepository;
 import com.oscargsedas.transactionsystem.repository.UserRepository;
@@ -23,6 +24,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -105,7 +107,7 @@ class AccountServiceTest {
 	}
 
 	@Test
-	void createAccountDoesNotApplyWelcomeBonusAfterFirstAccount() {
+	void createAccountRejectsSecondAccountForSameUser() {
 		UUID userId = UUID.randomUUID();
 		User authenticatedUser = new User();
 		authenticatedUser.setId(userId);
@@ -117,23 +119,15 @@ class AccountServiceTest {
 
 		when(userRepository.findByEmail("user@example.com")).thenReturn(authenticatedUser);
 		when(accountRepository.countByUserId(userId)).thenReturn(1L);
-		when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> {
-			Account account = invocation.getArgument(0);
-			if (account.getId() == null) {
-				account.setId(UUID.randomUUID());
-			}
-			return account;
-		});
-		when(entityDtoMapper.toAccountDto(any(Account.class))).thenReturn(null);
-
-		accountService.createAccount(new AccountRequest("EUR"));
+		assertThrows(ForbiddenAccessException.class, () -> accountService.createAccount(new AccountRequest("EUR")));
 
 		verify(transactionRepository, never()).save(any(Transaction.class));
 		verify(ledgerLineService, never()).createLedgerLinesForTransaction(any(Transaction.class));
+		verify(accountRepository, never()).save(any(Account.class));
 	}
 
 	@Test
-	void getAccountBalanceForAuthenticatedUserReturnsBalanceOnlyForOwnedAccount() {
+	void getAuthenticatedUserAccountBalanceReturnsBalanceForCurrentUserAccount() {
 		UUID userId = UUID.randomUUID();
 		UUID accountId = UUID.randomUUID();
 		User authenticatedUser = new User();
@@ -150,10 +144,10 @@ class AccountServiceTest {
 		account.setCurrency("EUR");
 
 		when(userRepository.findByEmail("user@example.com")).thenReturn(authenticatedUser);
-		when(accountRepository.findById(accountId)).thenReturn(java.util.Optional.of(account));
+		when(accountRepository.findByUserId(userId)).thenReturn(java.util.Optional.of(account));
 		when(ledgerLineService.getAccountBalance(accountId)).thenReturn(new BigDecimal("123.45"));
 
-		BigDecimal balance = accountService.getAccountBalanceForAuthenticatedUser(accountId);
+		BigDecimal balance = accountService.getAuthenticatedUserAccountBalance();
 
 		assertEquals(new BigDecimal("123.45"), balance);
 		verify(ledgerLineService).getAccountBalance(accountId);

@@ -103,13 +103,6 @@ public class AccountService {
 				.map(entityDtoMapper::toAccountDto);
 	}
 
-	public AccountDto getAccountById(UUID accountId) {
-		User authenticatedUser = getAuthenticatedUser();
-		Account account = findAccountOrThrow(accountId);
-		validateOwnershipOrThrow(authenticatedUser.getId(), account);
-		return entityDtoMapper.toAccountDto(account);
-	}
-
 	public Account getAccountEntityById(UUID accountId) {
 		User authenticatedUser = getAuthenticatedUser();
 		Account account = findAccountOrThrow(accountId);
@@ -117,10 +110,6 @@ public class AccountService {
 		return account;
 	}
 
-	public BigDecimal getAccountBalanceForAuthenticatedUser(UUID accountId) {
-		getAccountEntityById(accountId);
-		return ledgerLineService.getAccountBalance(accountId);
-	}
 
 	Account getAnyAccountEntityById(UUID accountId) {
 		return findAccountOrThrow(accountId);
