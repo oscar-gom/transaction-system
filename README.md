@@ -269,7 +269,7 @@ Project Link: [https://github.com/oscar-gom/transaction-system](https://github.c
 [issues-shield]: https://img.shields.io/github/issues/oscar-gom/transaction-system.svg?style=for-the-badge
 [issues-url]: https://github.com/oscar-gom/transaction-system/issues
 [license-shield]: https://img.shields.io/github/license/oscar-gom/transaction-system.svg?style=for-the-badge
-[license-url]: https://github.com/oscar-gom/transaction-system/blob/master/LICENSE.txt
+[license-url]: https://github.com/oscar-gom/transaction-system/blob/main/LICENSE
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://www.linkedin.com/in/oscar-gomez-sedas/
 
