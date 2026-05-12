@@ -16,4 +16,6 @@ public interface AccountRepository extends JpaRepository<Account, UUID> {
 	Optional<Account> findByUserId(UUID userId);
 
 	Page<Account> findAllByUserId(UUID id, Pageable pageable);
+
+	Optional<Account> findByAccountName(String accountName);
 }

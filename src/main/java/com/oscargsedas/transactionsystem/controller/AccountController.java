@@ -62,6 +62,22 @@ public class AccountController {
 		return ResponseEntity.ok(response);
 	}
 
+	@GetMapping("/{name}")
+	@Operation(summary = "Get account by name", description = "Return the account with the specified name")
+	public ResponseEntity<ApiSuccessResponse<AccountDto>> getAccountByName(HttpServletRequest request, @PathVariable String name) {
+		AccountDto accountDto = accountService.getAccountByAccountName(name);
+
+		ApiSuccessResponse<AccountDto> response = new ApiSuccessResponse<>(
+				Instant.now(),
+				HttpStatus.OK.value(),
+				"Account retrieved successfully",
+				request.getRequestURI(),
+				accountDto
+		);
+
+		return ResponseEntity.ok(response);
+	}
+
 	@GetMapping("/me/balance")
 	@Operation(summary = "Get my account balance", description = "Return the balance of the currently authenticated user's account")
 	public ResponseEntity<ApiSuccessResponse<BigDecimal>> getMyAccountBalance(HttpServletRequest request) {

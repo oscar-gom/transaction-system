@@ -39,7 +39,7 @@ public class AccountService {
 			throw new ForbiddenAccessException("Each user can only have one account");
 		}
 
-		Account savedAccount = accountRepository.save(buildAccount(authenticatedUser, request.currency()));
+		Account savedAccount = accountRepository.save(buildAccount(authenticatedUser, request.currency(), request.accountName()));
 
 
 		welcomeBonusTreasuryService.applyWelcomeBonus(savedAccount);
@@ -61,10 +61,11 @@ public class AccountService {
 		return ledgerLineService.getAccountBalance(account.getId());
 	}
 
-	private Account buildAccount(User authenticatedUser, String currency) {
+	private Account buildAccount(User authenticatedUser, String currency, String accountName) {
 		Account account = new Account();
 		account.setUser(authenticatedUser);
 		account.setCurrency(currency);
+		account.setAccountName(accountName);
 		return account;
 	}
 
@@ -88,6 +89,13 @@ public class AccountService {
 		Account account = findAccountOrThrow(accountId);
 		validateOwnershipOrThrow(authenticatedUser.getId(), account);
 		return account;
+	}
+
+	public AccountDto getAccountByAccountName(String accountName) {
+		Account account = accountRepository.findByAccountName(accountName)
+				.orElseThrow(() -> new ResourceNotFoundException("Account not found with name: " + accountName));
+
+		return entityDtoMapper.toAccountDto(account);
 	}
 
 
