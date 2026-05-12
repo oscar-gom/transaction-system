@@ -15,12 +15,16 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Table(name = "accounts", indexes = {
 		@Index(name = "idx_accounts_user_id", columnList = "user_id"),
-		@Index(name = "idx_accounts_currency", columnList = "currency")
+		@Index(name = "idx_accounts_currency", columnList = "currency"),
+		@Index(name = "idx_accounts_account_name", columnList = "account_name")
 })
 public class Account extends BaseEntity {
 	@Id
 	@GeneratedValue(strategy = jakarta.persistence.GenerationType.UUID)
 	private UUID id;
+
+	@Column(nullable = false, length = 100, name = "account_name", unique = true)
+	private String accountName;
 
 	@ToString.Exclude
 	@OneToOne(optional = false)
