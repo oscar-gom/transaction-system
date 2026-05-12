@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -39,7 +40,7 @@ public class AccountService {
 			throw new ForbiddenAccessException("Each user can only have one account");
 		}
 
-		Account savedAccount = accountRepository.save(buildAccount(authenticatedUser, request.currency()));
+		Account savedAccount = accountRepository.save(buildAccount(authenticatedUser, request.currency(), request.accountName()));
 
 
 		welcomeBonusTreasuryService.applyWelcomeBonus(savedAccount);
@@ -61,10 +62,11 @@ public class AccountService {
 		return ledgerLineService.getAccountBalance(account.getId());
 	}
 
-	private Account buildAccount(User authenticatedUser, String currency) {
+	private Account buildAccount(User authenticatedUser, String currency, String accountName) {
 		Account account = new Account();
 		account.setUser(authenticatedUser);
 		account.setCurrency(currency);
+		account.setAccountName(accountName);
 		return account;
 	}
 
@@ -90,6 +92,12 @@ public class AccountService {
 		return account;
 	}
 
+	public AccountDto getAccountByAccountName(String accountName) {
+		Account account = accountRepository.findByAccountName(accountName)
+				.orElseThrow(() -> new ResourceNotFoundException("Account not found with name: " + accountName));
+
+		return entityDtoMapper.toAccountDto(account);
+	}
 
 	Account getAnyAccountEntityById(UUID accountId) {
 		return findAccountOrThrow(accountId);
@@ -97,6 +105,30 @@ public class AccountService {
 
 	UUID getAuthenticatedUserId() {
 		return getAuthenticatedUser().getId();
+	}
+
+	public Page<AccountDto> searchAccountByName(String accountName, Pageable pageable) {
+		if (accountName == null) {
+			throw new IllegalArgumentException("Search query must be at least 5 characters long");
+		}
+
+		String normalized = accountName.trim();
+		if (normalized.length() < 5) {
+			throw new IllegalArgumentException("Search query must be at least 5 characters long");
+		}
+
+		if (pageable == null) {
+			pageable = PageRequest.of(0, PAGE_SIZE, Sort.by("accountName"));
+		}
+
+		int requestedSize = pageable.getPageSize() <= 0 ? PAGE_SIZE : pageable.getPageSize();
+		int safeSize = Math.min(requestedSize, PAGE_SIZE);
+
+		Pageable normalizedPageable = PageRequest.of(Math.max(0, pageable.getPageNumber()), safeSize, pageable.getSort());
+
+		Page<Account> accounts = accountRepository.findByAccountNameContainingIgnoreCase(normalized, normalizedPageable);
+
+		return accounts.map(entityDtoMapper::toAccountDto);
 	}
 
 	public void updateAccount(UUID accountId, AccountRequest request) {
