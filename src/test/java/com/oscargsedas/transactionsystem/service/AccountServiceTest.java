@@ -77,7 +77,7 @@ class AccountServiceTest {
 		});
 		when(entityDtoMapper.toAccountDto(any(Account.class))).thenReturn(null);
 
-		accountService.createAccount(new AccountRequest("EUR", "test-account"));
+		accountService.createAccount(new AccountRequest("test-account", "EUR"));
 
 		verify(welcomeBonusTreasuryService).applyWelcomeBonus(any(Account.class));
 	}
