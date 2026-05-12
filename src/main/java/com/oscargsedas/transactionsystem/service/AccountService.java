@@ -108,7 +108,12 @@ public class AccountService {
 	}
 
 	public Page<AccountDto> searchAccountByName(String accountName, Pageable pageable) {
-		if (accountName == null || accountName.trim().length() < 5) {
+		if (accountName == null) {
+			throw new IllegalArgumentException("Search query must be at least 5 characters long");
+		}
+
+		String normalized = accountName.trim();
+		if (normalized.length() < 5) {
 			throw new IllegalArgumentException("Search query must be at least 5 characters long");
 		}
 
@@ -121,7 +126,7 @@ public class AccountService {
 
 		Pageable normalizedPageable = PageRequest.of(Math.max(0, pageable.getPageNumber()), safeSize, pageable.getSort());
 
-		Page<Account> accounts = accountRepository.findByAccountNameContainingIgnoreCase(accountName, normalizedPageable);
+		Page<Account> accounts = accountRepository.findByAccountNameContainingIgnoreCase(normalized, normalizedPageable);
 
 		return accounts.map(entityDtoMapper::toAccountDto);
 	}
