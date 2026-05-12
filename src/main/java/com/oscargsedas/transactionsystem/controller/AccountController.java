@@ -62,6 +62,22 @@ public class AccountController {
 		return ResponseEntity.ok(response);
 	}
 
+	@GetMapping("/me/balance")
+	@Operation(summary = "Get my account balance", description = "Return the balance of the currently authenticated user's account")
+	public ResponseEntity<ApiSuccessResponse<BigDecimal>> getMyAccountBalance(HttpServletRequest request) {
+		BigDecimal balance = accountService.getAuthenticatedUserAccountBalance();
+
+		ApiSuccessResponse<BigDecimal> response = new ApiSuccessResponse<>(
+				Instant.now(),
+				HttpStatus.OK.value(),
+				"Authenticated user's account balance retrieved successfully",
+				request.getRequestURI(),
+				balance
+		);
+
+		return ResponseEntity.ok(response);
+	}
+
 	@GetMapping("/{name}")
 	@Operation(summary = "Get account by name", description = "Return the account with the specified name")
 	public ResponseEntity<ApiSuccessResponse<AccountDto>> getAccountByName(HttpServletRequest request, @PathVariable String name) {
@@ -78,17 +94,22 @@ public class AccountController {
 		return ResponseEntity.ok(response);
 	}
 
-	@GetMapping("/me/balance")
-	@Operation(summary = "Get my account balance", description = "Return the balance of the currently authenticated user's account")
-	public ResponseEntity<ApiSuccessResponse<BigDecimal>> getMyAccountBalance(HttpServletRequest request) {
-		BigDecimal balance = accountService.getAuthenticatedUserAccountBalance();
+	@GetMapping("/search")
+	@Operation(summary = "Search accounts by name", description = "Search accounts by name containing the specified string. Returns paginated results.")
+	public ResponseEntity<ApiSuccessResponse<Page<AccountDto>>> searchAccountsByName(
+			HttpServletRequest request,
+			@RequestParam(name = "q") String q,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size) {
+		Pageable pageable = PageRequest.of(page, Math.clamp(size, 1, AccountService.PAGE_SIZE));
+		Page<AccountDto> accounts = accountService.searchAccountByName(q, pageable);
 
-		ApiSuccessResponse<BigDecimal> response = new ApiSuccessResponse<>(
+		ApiSuccessResponse<Page<AccountDto>> response = new ApiSuccessResponse<>(
 				Instant.now(),
 				HttpStatus.OK.value(),
-				"Authenticated user's account balance retrieved successfully",
+				"Accounts search results",
 				request.getRequestURI(),
-				balance
+				accounts
 		);
 
 		return ResponseEntity.ok(response);

@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -98,13 +99,31 @@ public class AccountService {
 		return entityDtoMapper.toAccountDto(account);
 	}
 
-
 	Account getAnyAccountEntityById(UUID accountId) {
 		return findAccountOrThrow(accountId);
 	}
 
 	UUID getAuthenticatedUserId() {
 		return getAuthenticatedUser().getId();
+	}
+
+	public Page<AccountDto> searchAccountByName(String accountName, Pageable pageable) {
+		if (accountName == null || accountName.trim().length() < 5) {
+			throw new IllegalArgumentException("Search query must be at least 5 characters long");
+		}
+
+		if (pageable == null) {
+			pageable = PageRequest.of(0, PAGE_SIZE, Sort.by("accountName"));
+		}
+
+		int requestedSize = pageable.getPageSize() <= 0 ? PAGE_SIZE : pageable.getPageSize();
+		int safeSize = Math.min(requestedSize, PAGE_SIZE);
+
+		Pageable normalizedPageable = PageRequest.of(Math.max(0, pageable.getPageNumber()), safeSize, pageable.getSort());
+
+		Page<Account> accounts = accountRepository.findByAccountNameContainingIgnoreCase(accountName, normalizedPageable);
+
+		return accounts.map(entityDtoMapper::toAccountDto);
 	}
 
 	public void updateAccount(UUID accountId, AccountRequest request) {

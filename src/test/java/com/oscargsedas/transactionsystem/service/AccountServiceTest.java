@@ -13,10 +13,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -171,6 +175,39 @@ class AccountServiceTest {
 		Account result = accountService.getAccountEntityById(accountId);
 
 		assertEquals(account, result);
+	}
+
+	@Test
+	void searchAccountByNameReturnsPagedDtos() {
+		Account a1 = new Account();
+		a1.setId(UUID.randomUUID());
+		a1.setAccountName("manolito1");
+		a1.setCurrency("EUR");
+
+		Account a2 = new Account();
+		a2.setId(UUID.randomUUID());
+		a2.setAccountName("manolito2");
+		a2.setCurrency("EUR");
+
+		com.oscargsedas.transactionsystem.dto.AccountDto d1 = mock(com.oscargsedas.transactionsystem.dto.AccountDto.class);
+		com.oscargsedas.transactionsystem.dto.AccountDto d2 = mock(com.oscargsedas.transactionsystem.dto.AccountDto.class);
+
+		Page<Account> page = new PageImpl<>(List.of(a1, a2), PageRequest.of(0, 10), 2);
+
+		when(accountRepository.findByAccountNameContainingIgnoreCase(eq("manol"), any(PageRequest.class))).thenReturn(page);
+		when(entityDtoMapper.toAccountDto(a1)).thenReturn(d1);
+		when(entityDtoMapper.toAccountDto(a2)).thenReturn(d2);
+
+		Page<com.oscargsedas.transactionsystem.dto.AccountDto> result = accountService.searchAccountByName("manol", PageRequest.of(0, 10));
+
+		assertEquals(2, result.getTotalElements());
+		assertEquals(d1, result.getContent().get(0));
+		assertEquals(d2, result.getContent().get(1));
+	}
+
+	@Test
+	void searchAccountByNameThrowsForShortQuery() {
+		assertThrows(IllegalArgumentException.class, () -> accountService.searchAccountByName("mano", PageRequest.of(0, 10)));
 	}
 }
 
