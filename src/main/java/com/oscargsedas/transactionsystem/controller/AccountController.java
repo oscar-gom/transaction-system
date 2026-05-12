@@ -101,7 +101,8 @@ public class AccountController {
 			@RequestParam(name = "q") String q,
 			@RequestParam(defaultValue = "0") int page,
 			@RequestParam(defaultValue = "10") int size) {
-		Pageable pageable = PageRequest.of(page, Math.clamp(size, 1, AccountService.PAGE_SIZE));
+		int normalizedPage = Math.max(page, 0);
+		Pageable pageable = PageRequest.of(normalizedPage, Math.clamp(size, 1, AccountService.PAGE_SIZE));
 		Page<AccountDto> accounts = accountService.searchAccountByName(q, pageable);
 
 		ApiSuccessResponse<Page<AccountDto>> response = new ApiSuccessResponse<>(
