@@ -8,14 +8,12 @@ import com.oscargsedas.transactionsystem.entity.User;
 import com.oscargsedas.transactionsystem.exception.ForbiddenAccessException;
 import com.oscargsedas.transactionsystem.exception.ResourceNotFoundException;
 import com.oscargsedas.transactionsystem.repository.AccountRepository;
-import com.oscargsedas.transactionsystem.repository.UserRepository;
+import com.oscargsedas.transactionsystem.util.AuthenticatedUserUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,14 +25,14 @@ import java.util.UUID;
 public class AccountService {
 	public static final int PAGE_SIZE = 10;
 	private final AccountRepository accountRepository;
-	private final UserRepository userRepository;
 	private final EntityDtoMapper entityDtoMapper;
 	private final LedgerLineService ledgerLineService;
 	private final WelcomeBonusTreasuryService welcomeBonusTreasuryService;
+	private final AuthenticatedUserUtil authenticatedUserUtil;
 
 	@Transactional
 	public AccountDto createAccount(AccountRequest request) {
-		User authenticatedUser = getAuthenticatedUser();
+		User authenticatedUser = authenticatedUserUtil.getAuthenticatedUser();
 		long existing = accountRepository.countByUserId(authenticatedUser.getId());
 		if (existing > 0) {
 			throw new ForbiddenAccessException("Each user can only have one account");
@@ -49,14 +47,14 @@ public class AccountService {
 	}
 
 	public AccountDto getAuthenticatedUserAccount() {
-		User authenticatedUser = getAuthenticatedUser();
+		User authenticatedUser = authenticatedUserUtil.getAuthenticatedUser();
 		Account account = accountRepository.findByUserId(authenticatedUser.getId())
 				.orElseThrow(() -> new ResourceNotFoundException("Account not found for authenticated user"));
 		return entityDtoMapper.toAccountDto(account);
 	}
 
 	public BigDecimal getAuthenticatedUserAccountBalance() {
-		User authenticatedUser = getAuthenticatedUser();
+		User authenticatedUser = authenticatedUserUtil.getAuthenticatedUser();
 		Account account = accountRepository.findByUserId(authenticatedUser.getId())
 				.orElseThrow(() -> new ResourceNotFoundException("Account not found for authenticated user"));
 		return ledgerLineService.getAccountBalance(account.getId());
@@ -80,13 +78,13 @@ public class AccountService {
 		}
 
 		Pageable normalizedPageable = PageRequest.of(pageable.getPageNumber(), PAGE_SIZE, pageable.getSort());
-		User authenticatedUser = getAuthenticatedUser();
+		User authenticatedUser = authenticatedUserUtil.getAuthenticatedUser();
 		return accountRepository.findAllByUserId(authenticatedUser.getId(), normalizedPageable)
 				.map(entityDtoMapper::toAccountDto);
 	}
 
 	public Account getAccountEntityById(UUID accountId) {
-		User authenticatedUser = getAuthenticatedUser();
+		User authenticatedUser = authenticatedUserUtil.getAuthenticatedUser();
 		Account account = findAccountOrThrow(accountId);
 		validateOwnershipOrThrow(authenticatedUser.getId(), account);
 		return account;
@@ -101,10 +99,6 @@ public class AccountService {
 
 	Account getAnyAccountEntityById(UUID accountId) {
 		return findAccountOrThrow(accountId);
-	}
-
-	UUID getAuthenticatedUserId() {
-		return getAuthenticatedUser().getId();
 	}
 
 	public Page<AccountDto> searchAccountByName(String accountName, Pageable pageable) {
@@ -132,7 +126,7 @@ public class AccountService {
 	}
 
 	public void updateAccount(UUID accountId, AccountRequest request) {
-		User authenticatedUser = getAuthenticatedUser();
+		User authenticatedUser = authenticatedUserUtil.getAuthenticatedUser();
 		Account account = findAccountOrThrow(accountId);
 		validateOwnershipOrThrow(authenticatedUser.getId(), account);
 		account.setCurrency(request.currency());
@@ -140,7 +134,7 @@ public class AccountService {
 	}
 
 	public void deleteAccount(UUID accountId) {
-		User authenticatedUser = getAuthenticatedUser();
+		User authenticatedUser = authenticatedUserUtil.getAuthenticatedUser();
 		Account account = findAccountOrThrow(accountId);
 		validateOwnershipOrThrow(authenticatedUser.getId(), account);
 		BigDecimal balance = ledgerLineService.getAccountBalance(accountId);
@@ -155,20 +149,6 @@ public class AccountService {
 	private Account findAccountOrThrow(UUID accountId) {
 		return accountRepository.findById(accountId)
 				.orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + accountId));
-	}
-
-	private User getAuthenticatedUser() {
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
-			throw new ForbiddenAccessException("You must be authenticated to perform this action");
-		}
-
-		String email = authentication.getName();
-		User user = userRepository.findByEmail(email);
-		if (user == null) {
-			throw new ResourceNotFoundException("Authenticated user not found with email: " + email);
-		}
-		return user;
 	}
 
 	private void validateOwnershipOrThrow(UUID authenticatedUserId, Account account) {

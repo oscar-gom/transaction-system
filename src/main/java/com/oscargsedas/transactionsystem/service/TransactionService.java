@@ -9,6 +9,7 @@ import com.oscargsedas.transactionsystem.entity.TransactionStatus;
 import com.oscargsedas.transactionsystem.entity.User;
 import com.oscargsedas.transactionsystem.exception.*;
 import com.oscargsedas.transactionsystem.repository.TransactionRepository;
+import com.oscargsedas.transactionsystem.util.AuthenticatedUserUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
@@ -36,6 +37,7 @@ public class TransactionService {
 	private final AccountService accountService;
 	private final LedgerLineService ledgerLineService;
 	private final EntityDtoMapper entityDtoMapper;
+	private final AuthenticatedUserUtil authenticatedUserUtil;
 
 	@Retryable(
 			retryFor = TransactionProcessingException.class,
@@ -64,13 +66,13 @@ public class TransactionService {
 		}
 
 		Pageable normalizedPageable = PageRequest.of(pageable.getPageNumber(), PAGE_SIZE, pageable.getSort());
-		UUID userId = accountService.getAuthenticatedUserId();
+		UUID userId = authenticatedUserUtil.getAuthenticatedUserId();
 		return transactionRepository.findBySenderAccount_User_IdOrReceiverAccount_User_Id(userId, userId, normalizedPageable)
 				.map(entityDtoMapper::toTransactionDto);
 	}
 
 	public TransactionDto getTransactionById(UUID transactionId) {
-		UUID userId = accountService.getAuthenticatedUserId();
+		UUID userId = authenticatedUserUtil.getAuthenticatedUserId();
 		Transaction transaction = transactionRepository.findById(transactionId)
 				.orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + transactionId));
 		validateTransactionAccess(transaction, userId);
@@ -85,7 +87,7 @@ public class TransactionService {
 	}
 
 	public Transaction createTransactionEntity(TransactionRequest request) {
-		UUID userId = accountService.getAuthenticatedUserId();
+		UUID userId = authenticatedUserUtil.getAuthenticatedUserId();
 		log.info("TX_FLOW create idempotencyKey={} userId={} senderId={} receiverId={} amount={}",
 				request.idempotencyKey(), userId, request.senderId(), request.receiverId(), request.amount());
 
