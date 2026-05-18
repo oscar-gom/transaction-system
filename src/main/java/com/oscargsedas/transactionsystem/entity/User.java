@@ -24,12 +24,19 @@ public class User extends BaseEntity {
 	@Column(unique = true, nullable = false)
 	@Email
 	private String email;
+
 	@NotNull
 	private String name;
+
 	@NotNull
 	private String surname;
+
 	@NotNull
 	private String password;
+
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, name = "account_type")
+	private AccountType accountType = AccountType.USER;
 
 	@OneToOne(mappedBy = "user")
 	private Account account;

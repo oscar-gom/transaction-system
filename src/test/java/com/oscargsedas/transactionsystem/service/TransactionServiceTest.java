@@ -12,6 +12,7 @@ import com.oscargsedas.transactionsystem.exception.ForbiddenAccessException;
 import com.oscargsedas.transactionsystem.exception.TransactionProcessingException;
 import com.oscargsedas.transactionsystem.exception.TransactionRetriesExhaustedException;
 import com.oscargsedas.transactionsystem.repository.TransactionRepository;
+import com.oscargsedas.transactionsystem.util.AuthenticatedUserUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -48,6 +49,9 @@ class TransactionServiceTest {
 	@Mock
 	private EntityDtoMapper entityDtoMapper;
 
+	@Mock
+	private AuthenticatedUserUtil authenticatedUserUtil;
+
 	@InjectMocks
 	private TransactionService transactionService;
 
@@ -59,7 +63,7 @@ class TransactionServiceTest {
 		tx.setId(UUID.randomUUID());
 		TransactionDto dto = new TransactionDto(null, null, tx.getId(), null, null, UUID.randomUUID(), new BigDecimal("10.00"), TransactionStatus.COMPLETED);
 
-		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
+		when(authenticatedUserUtil.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findBySenderAccount_User_IdOrReceiverAccount_User_Id(authenticatedUserId, authenticatedUserId, pageable))
 				.thenReturn(new PageImpl<>(List.of(tx), pageable, 1));
 		when(entityDtoMapper.toTransactionDto(tx)).thenReturn(dto);
@@ -86,7 +90,7 @@ class TransactionServiceTest {
 		existing.setSenderAccount(sender);
 		existing.setReceiverAccount(receiver);
 
-		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
+		when(authenticatedUserUtil.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.of(existing));
 
 		TransactionRequest request = new TransactionRequest(sender.getId(), receiver.getId(), idempotencyKey, new BigDecimal("50.00"));
@@ -111,7 +115,7 @@ class TransactionServiceTest {
 		existing.setSenderAccount(sender);
 		existing.setReceiverAccount(receiver);
 
-		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
+		when(authenticatedUserUtil.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.of(existing));
 
 		TransactionDto mapped = new TransactionDto(null, null, existing.getId(), null, null, idempotencyKey, new BigDecimal("50.00"), TransactionStatus.PENDING);
@@ -140,7 +144,7 @@ class TransactionServiceTest {
 		existing.setSenderAccount(sender);
 		existing.setReceiverAccount(receiver);
 
-		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
+		when(authenticatedUserUtil.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.of(existing));
 
 		TransactionRequest request = new TransactionRequest(sender.getId(), receiver.getId(), idempotencyKey, new BigDecimal("10.00"));
@@ -165,7 +169,7 @@ class TransactionServiceTest {
 
 		TransactionRequest request = new TransactionRequest(senderId, receiverId, idempotencyKey, amount);
 
-		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
+		when(authenticatedUserUtil.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
 		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
 		when(accountService.getAnyAccountEntityById(receiverId)).thenReturn(receiver);
@@ -203,7 +207,7 @@ class TransactionServiceTest {
 		Account receiver = accountOwnedBy(authenticatedUserId);
 		receiver.setId(receiverId);
 
-		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
+		when(authenticatedUserUtil.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
 		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
 		when(ledgerLineService.getAccountBalance(senderId)).thenReturn(new BigDecimal("10.00"));
@@ -226,7 +230,7 @@ class TransactionServiceTest {
 		Account sender = accountOwnedBy(authenticatedUserId);
 		sender.setId(senderId);
 
-		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
+		when(authenticatedUserUtil.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
 		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
 		when(ledgerLineService.getAccountBalance(senderId)).thenReturn(new BigDecimal("10.00"));
@@ -249,7 +253,7 @@ class TransactionServiceTest {
 		Account receiver = accountOwnedBy(authenticatedUserId);
 		receiver.setId(receiverId);
 
-		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
+		when(authenticatedUserUtil.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
 		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
 		when(accountService.getAnyAccountEntityById(receiverId)).thenReturn(receiver);
@@ -281,7 +285,7 @@ class TransactionServiceTest {
 		Account receiver = accountOwnedBy(authenticatedUserId);
 		receiver.setId(receiverId);
 
-		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
+		when(authenticatedUserUtil.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
 		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
 		when(accountService.getAnyAccountEntityById(receiverId)).thenReturn(receiver);
@@ -318,7 +322,7 @@ class TransactionServiceTest {
 		Account receiver = accountOwnedBy(authenticatedUserId);
 		receiver.setId(receiverId);
 
-		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
+		when(authenticatedUserUtil.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
 		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
 		when(accountService.getAnyAccountEntityById(receiverId)).thenReturn(receiver);
@@ -344,7 +348,7 @@ class TransactionServiceTest {
 		transaction.setSenderAccount(sender);
 		transaction.setReceiverAccount(receiver);
 
-		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
+		when(authenticatedUserUtil.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findById(transactionId)).thenReturn(Optional.of(transaction));
 
 		assertThrows(ForbiddenAccessException.class, () -> transactionService.getTransactionById(transactionId));
@@ -365,7 +369,7 @@ class TransactionServiceTest {
 
 		TransactionDto mapped = new TransactionDto(null, null, transactionId, null, null, UUID.randomUUID(), new BigDecimal("15.00"), TransactionStatus.COMPLETED);
 
-		when(accountService.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
+		when(authenticatedUserUtil.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findById(transactionId)).thenReturn(Optional.of(transaction));
 		when(entityDtoMapper.toTransactionDto(transaction)).thenReturn(mapped);
 

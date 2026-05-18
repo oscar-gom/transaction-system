@@ -21,7 +21,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v3/accounts")
+@RequestMapping("/api/v4/accounts")
 @RequiredArgsConstructor
 @Tag(name = "Accounts", description = "Endpoints to manage user accounts and balances")
 public class AccountController {

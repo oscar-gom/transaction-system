@@ -6,8 +6,7 @@ import com.oscargsedas.transactionsystem.entity.Account;
 import com.oscargsedas.transactionsystem.entity.User;
 import com.oscargsedas.transactionsystem.exception.ForbiddenAccessException;
 import com.oscargsedas.transactionsystem.repository.AccountRepository;
-import com.oscargsedas.transactionsystem.repository.UserRepository;
-import org.junit.jupiter.api.AfterEach;
+import com.oscargsedas.transactionsystem.util.AuthenticatedUserUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,8 +15,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -36,9 +33,6 @@ class AccountServiceTest {
 	private AccountRepository accountRepository;
 
 	@Mock
-	private UserRepository userRepository;
-
-	@Mock
 	private EntityDtoMapper entityDtoMapper;
 
 	@Mock
@@ -47,13 +41,11 @@ class AccountServiceTest {
 	@Mock
 	private WelcomeBonusTreasuryService welcomeBonusTreasuryService;
 
+	@Mock
+	private AuthenticatedUserUtil authenticatedUserUtil;
+
 	@InjectMocks
 	private AccountService accountService;
-
-	@AfterEach
-	void clearSecurityContext() {
-		SecurityContextHolder.clearContext();
-	}
 
 	@Test
 	void createAccountAppliesWelcomeBonusOnFirstAccount() {
@@ -62,11 +54,7 @@ class AccountServiceTest {
 		authenticatedUser.setId(userId);
 		authenticatedUser.setEmail("user@example.com");
 
-		SecurityContextHolder.getContext().setAuthentication(
-				new UsernamePasswordAuthenticationToken("user@example.com", "n/a")
-		);
-
-		when(userRepository.findByEmail("user@example.com")).thenReturn(authenticatedUser);
+		when(authenticatedUserUtil.getAuthenticatedUser()).thenReturn(authenticatedUser);
 		when(accountRepository.countByUserId(userId)).thenReturn(0L);
 		when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> {
 			Account account = invocation.getArgument(0);
@@ -89,11 +77,7 @@ class AccountServiceTest {
 		authenticatedUser.setId(userId);
 		authenticatedUser.setEmail("user@example.com");
 
-		SecurityContextHolder.getContext().setAuthentication(
-				new UsernamePasswordAuthenticationToken("user@example.com", "n/a")
-		);
-
-		when(userRepository.findByEmail("user@example.com")).thenReturn(authenticatedUser);
+		when(authenticatedUserUtil.getAuthenticatedUser()).thenReturn(authenticatedUser);
 		when(accountRepository.countByUserId(userId)).thenReturn(1L);
 
 		assertThrows(ForbiddenAccessException.class, () -> accountService.createAccount(new AccountRequest("test-account", "EUR")));
@@ -110,16 +94,12 @@ class AccountServiceTest {
 		authenticatedUser.setId(userId);
 		authenticatedUser.setEmail("user@example.com");
 
-		SecurityContextHolder.getContext().setAuthentication(
-				new UsernamePasswordAuthenticationToken("user@example.com", "n/a")
-		);
-
 		Account account = new Account();
 		account.setId(accountId);
 		account.setUser(authenticatedUser);
 		account.setCurrency("EUR");
 
-		when(userRepository.findByEmail("user@example.com")).thenReturn(authenticatedUser);
+		when(authenticatedUserUtil.getAuthenticatedUser()).thenReturn(authenticatedUser);
 		when(accountRepository.findByUserId(userId)).thenReturn(java.util.Optional.of(account));
 		when(ledgerLineService.getAccountBalance(accountId)).thenReturn(new BigDecimal("123.45"));
 
@@ -160,16 +140,12 @@ class AccountServiceTest {
 		authenticatedUser.setId(userId);
 		authenticatedUser.setEmail("owner2@example.com");
 
-		SecurityContextHolder.getContext().setAuthentication(
-				new UsernamePasswordAuthenticationToken("owner2@example.com", "n/a")
-		);
-
 		Account account = new Account();
 		account.setId(accountId);
 		account.setUser(authenticatedUser);
 		account.setCurrency("EUR");
 
-		when(userRepository.findByEmail("owner2@example.com")).thenReturn(authenticatedUser);
+		when(authenticatedUserUtil.getAuthenticatedUser()).thenReturn(authenticatedUser);
 		when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
 
 		Account result = accountService.getAccountEntityById(accountId);
@@ -210,4 +186,3 @@ class AccountServiceTest {
 		assertThrows(IllegalArgumentException.class, () -> accountService.searchAccountByName("mano", PageRequest.of(0, 10)));
 	}
 }
-
