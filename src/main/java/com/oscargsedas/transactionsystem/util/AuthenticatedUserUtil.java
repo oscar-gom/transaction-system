@@ -1,5 +1,6 @@
 package com.oscargsedas.transactionsystem.util;
 
+import com.oscargsedas.transactionsystem.entity.AccountType;
 import com.oscargsedas.transactionsystem.entity.User;
 import com.oscargsedas.transactionsystem.exception.ForbiddenAccessException;
 import com.oscargsedas.transactionsystem.exception.ResourceNotFoundException;
@@ -32,6 +33,10 @@ public class AuthenticatedUserUtil {
 
 	public UUID getAuthenticatedUserId() {
 		return getAuthenticatedUser().getId();
+	}
+
+	public boolean isAuthenticatedUserAdmin() {
+		return getAuthenticatedUser().getAccountType() == AccountType.ADMIN;
 	}
 }
 
