@@ -27,7 +27,7 @@ public class AccountService {
 	private final AccountRepository accountRepository;
 	private final EntityDtoMapper entityDtoMapper;
 	private final LedgerLineService ledgerLineService;
-	private final WelcomeBonusTreasuryService welcomeBonusTreasuryService;
+	private final TreasuryService treasuryService;
 	private final AuthenticatedUserUtil authenticatedUserUtil;
 
 	@Transactional
@@ -41,7 +41,7 @@ public class AccountService {
 		Account savedAccount = accountRepository.save(buildAccount(authenticatedUser, request.currency(), request.accountName()));
 
 
-		welcomeBonusTreasuryService.applyWelcomeBonus(savedAccount);
+		treasuryService.applyWelcomeBonus(savedAccount);
 
 		return entityDtoMapper.toAccountDto(savedAccount);
 	}

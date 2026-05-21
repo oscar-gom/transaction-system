@@ -1,6 +1,7 @@
 package com.oscargsedas.transactionsystem.controller;
 
 import com.oscargsedas.transactionsystem.dto.ApiSuccessResponse;
+import com.oscargsedas.transactionsystem.dto.TransactionRequest;
 import com.oscargsedas.transactionsystem.service.AdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -52,6 +53,24 @@ public class AdminController {
 				HttpStatus.OK.value(),
 				"User demoted from admin successfully",
 				request.getRequestURI(),
+				null
+		);
+
+		return ResponseEntity.ok(response);
+	}
+
+	@PostMapping("/compensation")
+	@Operation(summary = "Create compensation transaction", description = "Creates a compensation transaction based on the provided transaction request")
+	public ResponseEntity<ApiSuccessResponse<Void>> createCompensationTransaction(
+			TransactionRequest request,
+			HttpServletRequest httpRequest) {
+		adminService.createCompensationTransaction(request);
+
+		ApiSuccessResponse<Void> response = new ApiSuccessResponse<>(
+				Instant.now(),
+				HttpStatus.OK.value(),
+				"Compensation transaction created successfully",
+				httpRequest.getRequestURI(),
 				null
 		);
 
