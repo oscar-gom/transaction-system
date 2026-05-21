@@ -1,5 +1,6 @@
 package com.oscargsedas.transactionsystem.service;
 
+import com.oscargsedas.transactionsystem.dto.WelcomeBonusProperties;
 import com.oscargsedas.transactionsystem.entity.Account;
 import com.oscargsedas.transactionsystem.entity.Transaction;
 import com.oscargsedas.transactionsystem.entity.TransactionStatus;
@@ -21,7 +22,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class WelcomeBonusTreasuryServiceTest {
+class TreasuryServiceTest {
 
 	@Mock
 	private SystemTreasuryAccountService systemTreasuryAccountService;
@@ -36,7 +37,7 @@ class WelcomeBonusTreasuryServiceTest {
 	private WelcomeBonusProperties welcomeBonusProperties;
 
 	@InjectMocks
-	private WelcomeBonusTreasuryService welcomeBonusTreasuryService;
+	private TreasuryService treasuryService;
 
 	@Test
 	void applyWelcomeBonusCreatesCompletedTransactionAndLedgerLines() {
@@ -60,7 +61,7 @@ class WelcomeBonusTreasuryServiceTest {
 			return tx;
 		});
 
-		welcomeBonusTreasuryService.applyWelcomeBonus(receiverAccount);
+		treasuryService.applyWelcomeBonus(receiverAccount);
 
 		ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
 		verify(transactionRepository).save(captor.capture());

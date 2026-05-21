@@ -1,4 +1,4 @@
-package com.oscargsedas.transactionsystem.service;
+package com.oscargsedas.transactionsystem.dto;
 
 import lombok.Getter;
 import lombok.Setter;

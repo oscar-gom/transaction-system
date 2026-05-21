@@ -39,7 +39,7 @@ class AccountServiceTest {
 	private LedgerLineService ledgerLineService;
 
 	@Mock
-	private WelcomeBonusTreasuryService welcomeBonusTreasuryService;
+	private TreasuryService treasuryService;
 
 	@Mock
 	private AuthenticatedUserUtil authenticatedUserUtil;
@@ -67,7 +67,7 @@ class AccountServiceTest {
 
 		accountService.createAccount(new AccountRequest("test-account", "EUR"));
 
-		verify(welcomeBonusTreasuryService).applyWelcomeBonus(any(Account.class));
+		verify(treasuryService).applyWelcomeBonus(any(Account.class));
 	}
 
 	@Test
@@ -82,7 +82,7 @@ class AccountServiceTest {
 
 		assertThrows(ForbiddenAccessException.class, () -> accountService.createAccount(new AccountRequest("test-account", "EUR")));
 
-		verify(welcomeBonusTreasuryService, never()).applyWelcomeBonus(any(Account.class));
+		verify(treasuryService, never()).applyWelcomeBonus(any(Account.class));
 		verify(accountRepository, never()).save(any(Account.class));
 	}
 
