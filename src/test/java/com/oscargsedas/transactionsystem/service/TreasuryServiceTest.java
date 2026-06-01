@@ -51,9 +51,9 @@ class TreasuryServiceTest {
 
 		Account treasuryAccount = new Account();
 		treasuryAccount.setId(UUID.randomUUID());
-		treasuryAccount.setCurrency("EUR");
+		treasuryAccount.setCurrency("USD");
 
-		when(systemTreasuryAccountService.getOrCreateTreasuryAccount("EUR")).thenReturn(treasuryAccount);
+		when(systemTreasuryAccountService.getOrCreateTreasuryAccount("USD")).thenReturn(treasuryAccount);
 		when(welcomeBonusProperties.getAmount()).thenReturn(new BigDecimal("5000.00"));
 		when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
 			Transaction tx = invocation.getArgument(0);
@@ -72,6 +72,59 @@ class TreasuryServiceTest {
 		assertEquals(new BigDecimal("5000.00"), savedTx.getAmount());
 		assertEquals(TransactionStatus.COMPLETED, savedTx.getStatus());
 		verify(ledgerLineService).createLedgerLinesForTransaction(savedTx);
+	}
+
+	@Test
+	void applyWelcomeBonusAlwaysUsesUSDTreasuryRegardlessOfReceiverCurrency() {
+		User receiverUser = new User();
+		receiverUser.setId(UUID.randomUUID());
+
+		Account receiverAccount = new Account();
+		receiverAccount.setId(UUID.randomUUID());
+		receiverAccount.setUser(receiverUser);
+		receiverAccount.setCurrency("GBP");
+
+		Account treasuryAccount = new Account();
+		treasuryAccount.setId(UUID.randomUUID());
+		treasuryAccount.setCurrency("USD");
+
+		when(systemTreasuryAccountService.getOrCreateTreasuryAccount("USD")).thenReturn(treasuryAccount);
+		when(welcomeBonusProperties.getAmount()).thenReturn(new BigDecimal("5000.00"));
+		when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
+			Transaction tx = invocation.getArgument(0);
+			tx.setId(UUID.randomUUID());
+			return tx;
+		});
+
+		treasuryService.applyWelcomeBonus(receiverAccount);
+
+		verify(systemTreasuryAccountService).getOrCreateTreasuryAccount("USD");
+	}
+
+	@Test
+	void createCompensationTransactionAlwaysUsesUSDTreasury() {
+		User receiverUser = new User();
+		receiverUser.setId(UUID.randomUUID());
+
+		Account receiverAccount = new Account();
+		receiverAccount.setId(UUID.randomUUID());
+		receiverAccount.setUser(receiverUser);
+		receiverAccount.setCurrency("JPY");
+
+		Account treasuryAccount = new Account();
+		treasuryAccount.setId(UUID.randomUUID());
+		treasuryAccount.setCurrency("USD");
+
+		when(systemTreasuryAccountService.getOrCreateTreasuryAccount("USD")).thenReturn(treasuryAccount);
+		when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
+			Transaction tx = invocation.getArgument(0);
+			tx.setId(UUID.randomUUID());
+			return tx;
+		});
+
+		treasuryService.createCompensationTransaction(receiverAccount, new BigDecimal("100.00"), UUID.randomUUID());
+
+		verify(systemTreasuryAccountService).getOrCreateTreasuryAccount("USD");
 	}
 }
 

@@ -26,7 +26,7 @@ public class TreasuryService {
 
 	@Transactional
 	public void applyWelcomeBonus(Account receiverAccount) {
-		Account treasuryAccount = systemTreasuryAccountService.getOrCreateTreasuryAccount(receiverAccount.getCurrency());
+		Account treasuryAccount = systemTreasuryAccountService.getOrCreateTreasuryAccount(ExchangeRateService.BASE_CURRENCY);
 		Transaction savedTransaction = transactionRepository.save(buildWelcomeTransaction(treasuryAccount, receiverAccount));
 		ledgerLineService.createLedgerLinesForTransaction(savedTransaction);
 	}
@@ -58,7 +58,7 @@ public class TreasuryService {
 			@NotNull Account receiverAccount,
 			@NotNull @Positive BigDecimal amount,
 			@NotNull UUID idempotencyKey) {
-		Account treasuryAccount = systemTreasuryAccountService.getOrCreateTreasuryAccount(receiverAccount.getCurrency());
+		Account treasuryAccount = systemTreasuryAccountService.getOrCreateTreasuryAccount(ExchangeRateService.BASE_CURRENCY);
 		Transaction savedTransaction = transactionRepository.save(
 				buildCompensationTransaction(treasuryAccount, receiverAccount, amount, idempotencyKey));
 
