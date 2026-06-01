@@ -1,5 +1,6 @@
 package com.oscargsedas.transactionsystem.service;
 
+import com.oscargsedas.transactionsystem.dto.WelcomeBonusProperties;
 import com.oscargsedas.transactionsystem.entity.Account;
 import com.oscargsedas.transactionsystem.entity.User;
 import com.oscargsedas.transactionsystem.repository.AccountRepository;

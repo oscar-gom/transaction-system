@@ -21,7 +21,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v2/accounts")
+@RequestMapping("/api/v4/accounts")
 @RequiredArgsConstructor
 @Tag(name = "Accounts", description = "Endpoints to manage user accounts and balances")
 public class AccountController {
@@ -73,6 +73,44 @@ public class AccountController {
 				"Authenticated user's account balance retrieved successfully",
 				request.getRequestURI(),
 				balance
+		);
+
+		return ResponseEntity.ok(response);
+	}
+
+	@GetMapping("/{name}")
+	@Operation(summary = "Get account by name", description = "Return the account with the specified name")
+	public ResponseEntity<ApiSuccessResponse<AccountDto>> getAccountByName(HttpServletRequest request, @PathVariable String name) {
+		AccountDto accountDto = accountService.getAccountByAccountName(name);
+
+		ApiSuccessResponse<AccountDto> response = new ApiSuccessResponse<>(
+				Instant.now(),
+				HttpStatus.OK.value(),
+				"Account retrieved successfully",
+				request.getRequestURI(),
+				accountDto
+		);
+
+		return ResponseEntity.ok(response);
+	}
+
+	@GetMapping("/search")
+	@Operation(summary = "Search accounts by name", description = "Search accounts by name containing the specified string. Returns paginated results.")
+	public ResponseEntity<ApiSuccessResponse<Page<AccountDto>>> searchAccountsByName(
+			HttpServletRequest request,
+			@RequestParam(name = "q") String q,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size) {
+		int normalizedPage = Math.max(page, 0);
+		Pageable pageable = PageRequest.of(normalizedPage, Math.clamp(size, 1, AccountService.PAGE_SIZE));
+		Page<AccountDto> accounts = accountService.searchAccountByName(q, pageable);
+
+		ApiSuccessResponse<Page<AccountDto>> response = new ApiSuccessResponse<>(
+				Instant.now(),
+				HttpStatus.OK.value(),
+				"Accounts search results",
+				request.getRequestURI(),
+				accounts
 		);
 
 		return ResponseEntity.ok(response);

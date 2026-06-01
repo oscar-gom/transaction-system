@@ -1,5 +1,6 @@
 package com.oscargsedas.transactionsystem.service;
 
+import com.oscargsedas.transactionsystem.dto.WelcomeBonusProperties;
 import com.oscargsedas.transactionsystem.entity.Account;
 import com.oscargsedas.transactionsystem.entity.Transaction;
 import com.oscargsedas.transactionsystem.entity.TransactionStatus;
@@ -21,7 +22,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class WelcomeBonusTreasuryServiceTest {
+class TreasuryServiceTest {
 
 	@Mock
 	private SystemTreasuryAccountService systemTreasuryAccountService;
@@ -36,7 +37,7 @@ class WelcomeBonusTreasuryServiceTest {
 	private WelcomeBonusProperties welcomeBonusProperties;
 
 	@InjectMocks
-	private WelcomeBonusTreasuryService welcomeBonusTreasuryService;
+	private TreasuryService treasuryService;
 
 	@Test
 	void applyWelcomeBonusCreatesCompletedTransactionAndLedgerLines() {
@@ -50,9 +51,9 @@ class WelcomeBonusTreasuryServiceTest {
 
 		Account treasuryAccount = new Account();
 		treasuryAccount.setId(UUID.randomUUID());
-		treasuryAccount.setCurrency("EUR");
+		treasuryAccount.setCurrency("USD");
 
-		when(systemTreasuryAccountService.getOrCreateTreasuryAccount("EUR")).thenReturn(treasuryAccount);
+		when(systemTreasuryAccountService.getOrCreateTreasuryAccount("USD")).thenReturn(treasuryAccount);
 		when(welcomeBonusProperties.getAmount()).thenReturn(new BigDecimal("5000.00"));
 		when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
 			Transaction tx = invocation.getArgument(0);
@@ -60,7 +61,7 @@ class WelcomeBonusTreasuryServiceTest {
 			return tx;
 		});
 
-		welcomeBonusTreasuryService.applyWelcomeBonus(receiverAccount);
+		treasuryService.applyWelcomeBonus(receiverAccount);
 
 		ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
 		verify(transactionRepository).save(captor.capture());
@@ -71,6 +72,59 @@ class WelcomeBonusTreasuryServiceTest {
 		assertEquals(new BigDecimal("5000.00"), savedTx.getAmount());
 		assertEquals(TransactionStatus.COMPLETED, savedTx.getStatus());
 		verify(ledgerLineService).createLedgerLinesForTransaction(savedTx);
+	}
+
+	@Test
+	void applyWelcomeBonusAlwaysUsesUSDTreasuryRegardlessOfReceiverCurrency() {
+		User receiverUser = new User();
+		receiverUser.setId(UUID.randomUUID());
+
+		Account receiverAccount = new Account();
+		receiverAccount.setId(UUID.randomUUID());
+		receiverAccount.setUser(receiverUser);
+		receiverAccount.setCurrency("GBP");
+
+		Account treasuryAccount = new Account();
+		treasuryAccount.setId(UUID.randomUUID());
+		treasuryAccount.setCurrency("USD");
+
+		when(systemTreasuryAccountService.getOrCreateTreasuryAccount("USD")).thenReturn(treasuryAccount);
+		when(welcomeBonusProperties.getAmount()).thenReturn(new BigDecimal("5000.00"));
+		when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
+			Transaction tx = invocation.getArgument(0);
+			tx.setId(UUID.randomUUID());
+			return tx;
+		});
+
+		treasuryService.applyWelcomeBonus(receiverAccount);
+
+		verify(systemTreasuryAccountService).getOrCreateTreasuryAccount("USD");
+	}
+
+	@Test
+	void createCompensationTransactionAlwaysUsesUSDTreasury() {
+		User receiverUser = new User();
+		receiverUser.setId(UUID.randomUUID());
+
+		Account receiverAccount = new Account();
+		receiverAccount.setId(UUID.randomUUID());
+		receiverAccount.setUser(receiverUser);
+		receiverAccount.setCurrency("JPY");
+
+		Account treasuryAccount = new Account();
+		treasuryAccount.setId(UUID.randomUUID());
+		treasuryAccount.setCurrency("USD");
+
+		when(systemTreasuryAccountService.getOrCreateTreasuryAccount("USD")).thenReturn(treasuryAccount);
+		when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
+			Transaction tx = invocation.getArgument(0);
+			tx.setId(UUID.randomUUID());
+			return tx;
+		});
+
+		treasuryService.createCompensationTransaction(receiverAccount, new BigDecimal("100.00"), UUID.randomUUID());
+
+		verify(systemTreasuryAccountService).getOrCreateTreasuryAccount("USD");
 	}
 }
 

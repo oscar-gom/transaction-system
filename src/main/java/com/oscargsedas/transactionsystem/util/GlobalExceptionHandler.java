@@ -1,10 +1,7 @@
 package com.oscargsedas.transactionsystem.util;
 
 import com.oscargsedas.transactionsystem.dto.ApiErrorResponse;
-import com.oscargsedas.transactionsystem.exception.CompletedIdempotencyKeyException;
-import com.oscargsedas.transactionsystem.exception.ForbiddenAccessException;
-import com.oscargsedas.transactionsystem.exception.ResourceNotFoundException;
-import com.oscargsedas.transactionsystem.exception.TransactionRetriesExhaustedException;
+import com.oscargsedas.transactionsystem.exception.*;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -72,6 +69,19 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(CompletedIdempotencyKeyException.class)
 	public ResponseEntity<ApiErrorResponse> handleCompletedIdempotency(CompletedIdempotencyKeyException ex, HttpServletRequest request) {
+		ApiErrorResponse response = new ApiErrorResponse(
+				Instant.now(),
+				HttpStatus.CONFLICT.value(),
+				"Conflict",
+				ex.getMessage(),
+				request.getRequestURI(),
+				null
+		);
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+	}
+
+	@ExceptionHandler(ConflictException.class)
+	public ResponseEntity<ApiErrorResponse> handleConflict(ConflictException ex, HttpServletRequest request) {
 		ApiErrorResponse response = new ApiErrorResponse(
 				Instant.now(),
 				HttpStatus.CONFLICT.value(),
