@@ -224,11 +224,11 @@ src/main/java/com/oscargsedas/transactionsystem/
 - [x] Data validation
 - [X] Make the repository public
 - [ ] CLI interface for direct system interaction
-- [ ] Rate Limiting to prevent spam attacks
-- [ ] Compensatory transactions for managing refunds or failures
-- [ ] Administrator system
-- [ ] Contact directory/address book
-- [ ] Robust server-side security validations for registration
+- [X] Rate Limiting to prevent spam attacks
+- [X] Compensatory transactions for managing refunds or failures
+- [X] Administrator system
+- [X] Contact directory/address book
+- [X] Robust server-side security validations for registration
 
 See [open issues](https://github.com/oscar-gom/transaction-system/issues) for a complete list of proposed features.
 
