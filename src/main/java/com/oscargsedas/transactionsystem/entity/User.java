@@ -31,6 +31,7 @@ public class User extends BaseEntity {
 	@NotNull
 	private String surname;
 
+	@ToString.Exclude
 	@NotNull
 	private String password;
 
@@ -38,6 +39,7 @@ public class User extends BaseEntity {
 	@Column(nullable = false, name = "account_type")
 	private AccountType accountType = AccountType.USER;
 
+	@ToString.Exclude
 	@OneToOne(mappedBy = "user")
 	private Account account;
 
