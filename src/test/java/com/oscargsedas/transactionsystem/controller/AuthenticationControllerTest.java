@@ -1,10 +1,12 @@
 package com.oscargsedas.transactionsystem.controller;
 
+import com.oscargsedas.transactionsystem.dto.ApiSuccessResponse;
 import com.oscargsedas.transactionsystem.dto.AuthResponse;
 import com.oscargsedas.transactionsystem.dto.UserRequest;
 import com.oscargsedas.transactionsystem.entity.User;
 import com.oscargsedas.transactionsystem.repository.UserRepository;
 import com.oscargsedas.transactionsystem.security.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -44,6 +46,9 @@ class AuthenticationControllerTest {
 
 	@Mock
 	private JwtUtil jwtUtil;
+
+	@Mock
+	private HttpServletRequest httpServletRequest;
 
 	@InjectMocks
 	private AuthenticationController authenticationController;
@@ -93,13 +98,16 @@ class AuthenticationControllerTest {
 		when(userRepository.existsByEmail(eq("user@example.com"))).thenReturn(false);
 		when(passwordEncoder.encode(eq("Password1"))).thenReturn("encoded");
 		when(userRepository.save(any(User.class))).thenReturn(savedUser);
+		when(httpServletRequest.getRequestURI()).thenReturn("/api/v4/auth/register");
 
-		ResponseEntity<AuthResponse> response = authenticationController.registerUser(request);
+		ResponseEntity<ApiSuccessResponse<AuthResponse>> response = authenticationController.registerUser(request, httpServletRequest);
 
 		assertEquals(200, response.getStatusCode().value());
 		assertNotNull(response.getBody());
-		assertTrue(response.getBody().isSuccess());
-		assertEquals(userId, response.getBody().getUserId());
+		AuthResponse data = response.getBody().data();
+		assertNotNull(data);
+		assertTrue(data.isSuccess());
+		assertEquals(userId, data.getUserId());
 	}
 
 	@Test
@@ -120,13 +128,16 @@ class AuthenticationControllerTest {
 		when(authentication.getName()).thenReturn("user@example.com");
 		when(jwtUtil.generateToken(eq("user@example.com"))).thenReturn("token");
 		when(userRepository.findByEmail(eq("user@example.com"))).thenReturn(user);
+		when(httpServletRequest.getRequestURI()).thenReturn("/api/v4/auth/login");
 
-		ResponseEntity<AuthResponse> response = authenticationController.authenticateUser(request);
+		ResponseEntity<ApiSuccessResponse<AuthResponse>> response = authenticationController.authenticateUser(request, httpServletRequest);
 
 		assertEquals(200, response.getStatusCode().value());
 		assertNotNull(response.getBody());
-		assertTrue(response.getBody().isSuccess());
-		assertEquals("token", response.getBody().getToken());
-		assertEquals(userId, response.getBody().getUserId());
+		AuthResponse data = response.getBody().data();
+		assertNotNull(data);
+		assertTrue(data.isSuccess());
+		assertEquals("token", data.getToken());
+		assertEquals(userId, data.getUserId());
 	}
 }
