@@ -24,10 +24,11 @@ public class CustomUserDetailsService implements UserDetailsService {
 			throw new UsernameNotFoundException("User not found with email: " + email);
 		}
 
-		return new org.springframework.security.core.userdetails.User(
+		return new com.oscargsedas.transactionsystem.security.CustomUserDetails(
 				user.getEmail(),
 				user.getPassword(),
-				Collections.emptyList()
+				Collections.emptyList(),
+				user.getTokenVersion()
 		);
 	}
 }

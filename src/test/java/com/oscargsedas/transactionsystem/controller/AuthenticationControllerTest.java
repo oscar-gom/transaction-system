@@ -19,7 +19,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Set;
@@ -114,19 +113,21 @@ class AuthenticationControllerTest {
 	void loginAcceptsValidPassword() {
 		UserRequest request = new UserRequest("user@example.com", "User", "Example", "Password1");
 		Authentication authentication = org.mockito.Mockito.mock(Authentication.class);
-		UserDetails userDetails = org.springframework.security.core.userdetails.User
-				.withUsername("user@example.com")
-				.password("encoded")
-				.authorities("USER")
-				.build();
+		com.oscargsedas.transactionsystem.security.CustomUserDetails userDetails = new com.oscargsedas.transactionsystem.security.CustomUserDetails(
+				"user@example.com",
+				"encoded",
+				java.util.Collections.singletonList(new org.springframework.security.core.authority.SimpleGrantedAuthority("USER")),
+				1L
+		);
 		User user = new User();
 		UUID userId = UUID.randomUUID();
 		user.setId(userId);
+		user.setTokenVersion(1L);
 
 		when(authenticationManager.authenticate(any())).thenReturn(authentication);
 		when(authentication.getPrincipal()).thenReturn(userDetails);
 		when(authentication.getName()).thenReturn("user@example.com");
-		when(jwtUtil.generateToken(eq("user@example.com"))).thenReturn("token");
+		when(jwtUtil.generateToken(eq("user@example.com"), eq(1L))).thenReturn("token");
 		when(userRepository.findByEmail(eq("user@example.com"))).thenReturn(user);
 		when(httpServletRequest.getRequestURI()).thenReturn("/api/v4/auth/login");
 

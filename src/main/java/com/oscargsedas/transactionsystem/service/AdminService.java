@@ -49,6 +49,7 @@ public class AdminService {
 		}
 
 		user.setAccountType(targetType);
+		user.setTokenVersion(user.getTokenVersion() + 1);
 		userRepository.save(user);
 	}
 

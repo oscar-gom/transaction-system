@@ -43,4 +43,7 @@ public class User extends BaseEntity {
 	@OneToOne(mappedBy = "user")
 	private Account account;
 
+	@Column(name = "token_version", nullable = false)
+	private Long tokenVersion = 1L;
+
 }

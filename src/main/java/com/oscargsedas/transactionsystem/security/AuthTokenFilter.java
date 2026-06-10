@@ -10,7 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -37,7 +36,14 @@ public class AuthTokenFilter extends OncePerRequestFilter {
 			String jwt = parseJwt(request);
 			if (jwt != null && jwtUtil.validateJwtToken(jwt)) {
 				final String email = jwtUtil.getEmailFromToken(jwt);
-				final UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+				final com.oscargsedas.transactionsystem.security.CustomUserDetails userDetails = (com.oscargsedas.transactionsystem.security.CustomUserDetails) userDetailsService.loadUserByUsername(email);
+				
+				Long tokenVersionFromJwt = jwtUtil.getTokenVersionFromToken(jwt);
+				if (!tokenVersionFromJwt.equals(userDetails.getTokenVersion())) {
+					log.warn("Token version mismatch for user {}. Token version: {}, DB version: {}", email, tokenVersionFromJwt, userDetails.getTokenVersion());
+					throw new IllegalStateException("Token is no longer valid because user session was revoked");
+				}
+
 				UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
 						userDetails,
 						null,
