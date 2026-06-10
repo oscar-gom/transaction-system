@@ -22,6 +22,7 @@ public class SystemTreasuryAccountService {
 					Account account = new Account();
 					account.setUser(systemUser);
 					account.setCurrency(currency);
+					account.setAccountName("System Treasury");
 					return accountRepository.save(account);
 				});
 	}
