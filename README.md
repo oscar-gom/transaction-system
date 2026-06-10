@@ -223,7 +223,6 @@ src/main/java/com/oscargsedas/transactionsystem/
 - [x] JWT authentication
 - [x] Data validation
 - [X] Make the repository public
-- [ ] CLI interface for direct system interaction
 - [X] Rate Limiting to prevent spam attacks
 - [X] Compensatory transactions for managing refunds or failures
 - [X] Administrator system
