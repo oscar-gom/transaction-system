@@ -1,6 +1,7 @@
 package com.oscargsedas.transactionsystem.security;
 
 import com.oscargsedas.transactionsystem.service.CustomUserDetailsService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -37,10 +38,14 @@ public class WebSecurityConfig {
 		http
 				.csrf(AbstractHttpConfigurer::disable)
 				.cors(AbstractHttpConfigurer::disable)
-				.exceptionHandling(exceptionHandling -> exceptionHandling.authenticationEntryPoint(unauthorizedHandler))
+				.exceptionHandling(exceptionHandling -> exceptionHandling
+						.authenticationEntryPoint(unauthorizedHandler)
+						.accessDeniedHandler((request, response, accessDeniedException) -> response.sendError(HttpServletResponse.SC_FORBIDDEN, "403 Forbidden"))
+				)
 				.sessionManagement(sessionManagement -> sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(authorize -> authorize
 						.requestMatchers("/api/v4/auth/**", "/api/v4/welcome").permitAll()
+						.requestMatchers("/api/v4/admin/**").hasRole("ADMIN")
 						.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs.yaml").permitAll()
 						.anyRequest().authenticated());
 

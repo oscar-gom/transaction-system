@@ -2,8 +2,10 @@ package com.oscargsedas.transactionsystem.service;
 
 import com.oscargsedas.transactionsystem.entity.User;
 import com.oscargsedas.transactionsystem.repository.UserRepository;
+import com.oscargsedas.transactionsystem.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -24,10 +26,10 @@ public class CustomUserDetailsService implements UserDetailsService {
 			throw new UsernameNotFoundException("User not found with email: " + email);
 		}
 
-		return new com.oscargsedas.transactionsystem.security.CustomUserDetails(
+		return new CustomUserDetails(
 				user.getEmail(),
 				user.getPassword(),
-				Collections.emptyList(),
+				Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getAccountType().name())),
 				user.getTokenVersion()
 		);
 	}
