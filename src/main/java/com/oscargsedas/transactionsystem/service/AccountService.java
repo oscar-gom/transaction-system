@@ -146,6 +146,16 @@ public class AccountService {
 		accountRepository.delete(account);
 	}
 
+	public Account getAndLockAccountEntityById(UUID accountId) {
+		User authenticatedUser = authenticatedUserUtil.getAuthenticatedUser();
+		Account account = accountRepository.findByIdForUpdate(accountId)
+				.orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + accountId));
+
+		validateOwnershipOrThrow(authenticatedUser.getId(), account);
+
+		return account;
+	}
+
 	private Account findAccountOrThrow(UUID accountId) {
 		return accountRepository.findById(accountId)
 				.orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + accountId));
