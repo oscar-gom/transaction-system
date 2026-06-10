@@ -11,7 +11,7 @@ public class RateLimitProperties {
 	private Limit authLoginLimit = new Limit(5, 5, 60);
 	private Limit authRegisterLimit = new Limit(3, 3, 60);
 	private Limit adminLimit = new Limit(10, 10, 60);
-	private Limit searchLimit = new Limit(30, 30, 60);
+	private Limit searchLimit = new Limit(5, 5, 60);
 	private Limit accountsLimit = new Limit(60, 60, 60);
 	private Limit transactionsLimit = new Limit(60, 60, 60);
 	private Limit defaultLimit = new Limit(60, 60, 60);
