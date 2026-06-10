@@ -14,6 +14,8 @@ public interface EntityDtoMapper {
 	@Mapping(target = "userId", source = "user.id")
 	AccountDto toAccountDto(Account account);
 
+	PublicAccountDto toPublicAccountDto(Account account);
+
 	@Mapping(target = "ownerUserId", source = "owner.id")
 	@Mapping(target = "contactAccountId", source = "contactAccount.id")
 	@Mapping(target = "contactAccountName", source = "contactAccount.accountName")

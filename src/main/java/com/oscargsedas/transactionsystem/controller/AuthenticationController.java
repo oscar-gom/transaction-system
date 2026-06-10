@@ -16,7 +16,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -45,9 +44,9 @@ public class AuthenticationController {
 				)
 		);
 
-		final UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+		final com.oscargsedas.transactionsystem.security.CustomUserDetails userDetails = (com.oscargsedas.transactionsystem.security.CustomUserDetails) authentication.getPrincipal();
 		String username = authentication.getName();
-		String token = jwtUtils.generateToken(username);
+		String token = jwtUtils.generateToken(username, userDetails.getTokenVersion());
 		User authenticatedUser = userRepository.findByEmail(username);
 		AuthResponse authData = new AuthResponse("Login successful", token, true, authenticatedUser != null ? authenticatedUser.getId() : null);
 

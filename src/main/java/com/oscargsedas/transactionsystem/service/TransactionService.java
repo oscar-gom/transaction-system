@@ -99,7 +99,8 @@ public class TransactionService {
 	private Transaction createNewTransaction(TransactionRequest request, UUID userId) {
 		validateTransactionRequest(request);
 
-		Account sender = accountService.getAccountEntityById(request.senderId());
+		Account sender = accountService.getAndLockAccountEntityById(request.senderId());
+
 		validateSufficientFunds(sender.getId(), request.amount(), request.idempotencyKey());
 
 		Account receiver = accountService.getAnyAccountEntityById(request.receiverId());

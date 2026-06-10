@@ -171,7 +171,7 @@ class TransactionServiceTest {
 
 		when(authenticatedUserUtil.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
-		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
+		when(accountService.getAndLockAccountEntityById(senderId)).thenReturn(sender);
 		when(accountService.getAnyAccountEntityById(receiverId)).thenReturn(receiver);
 		when(ledgerLineService.getAccountBalance(senderId)).thenReturn(new BigDecimal("100.00"));
 		when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
@@ -209,7 +209,7 @@ class TransactionServiceTest {
 
 		when(authenticatedUserUtil.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
-		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
+		when(accountService.getAndLockAccountEntityById(senderId)).thenReturn(sender);
 		when(ledgerLineService.getAccountBalance(senderId)).thenReturn(new BigDecimal("10.00"));
 
 		TransactionRequest request = new TransactionRequest(senderId, receiverId, idempotencyKey, new BigDecimal("50.00"));
@@ -232,7 +232,7 @@ class TransactionServiceTest {
 
 		when(authenticatedUserUtil.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
-		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
+		when(accountService.getAndLockAccountEntityById(senderId)).thenReturn(sender);
 		when(ledgerLineService.getAccountBalance(senderId)).thenReturn(new BigDecimal("10.00"));
 
 		TransactionRequest request = new TransactionRequest(senderId, receiverId, idempotencyKey, new BigDecimal("50.00"));
@@ -255,7 +255,7 @@ class TransactionServiceTest {
 
 		when(authenticatedUserUtil.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
-		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
+		when(accountService.getAndLockAccountEntityById(senderId)).thenReturn(sender);
 		when(accountService.getAnyAccountEntityById(receiverId)).thenReturn(receiver);
 		when(ledgerLineService.getAccountBalance(senderId)).thenReturn(new BigDecimal("90.00"));
 		when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
@@ -287,7 +287,7 @@ class TransactionServiceTest {
 
 		when(authenticatedUserUtil.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
-		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
+		when(accountService.getAndLockAccountEntityById(senderId)).thenReturn(sender);
 		when(accountService.getAnyAccountEntityById(receiverId)).thenReturn(receiver);
 		when(ledgerLineService.getAccountBalance(senderId)).thenReturn(new BigDecimal("90.00"));
 		when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
@@ -324,7 +324,7 @@ class TransactionServiceTest {
 
 		when(authenticatedUserUtil.getAuthenticatedUserId()).thenReturn(authenticatedUserId);
 		when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
-		when(accountService.getAccountEntityById(senderId)).thenReturn(sender);
+		when(accountService.getAndLockAccountEntityById(senderId)).thenReturn(sender);
 		when(accountService.getAnyAccountEntityById(receiverId)).thenReturn(receiver);
 		when(ledgerLineService.getAccountBalance(senderId)).thenReturn(new BigDecimal("90.00"));
 		when(transactionRepository.save(any(Transaction.class)))

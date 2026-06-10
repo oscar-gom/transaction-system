@@ -3,6 +3,7 @@ package com.oscargsedas.transactionsystem.service;
 import com.oscargsedas.transactionsystem.dto.AccountDto;
 import com.oscargsedas.transactionsystem.dto.AccountRequest;
 import com.oscargsedas.transactionsystem.dto.EntityDtoMapper;
+import com.oscargsedas.transactionsystem.dto.PublicAccountDto;
 import com.oscargsedas.transactionsystem.entity.Account;
 import com.oscargsedas.transactionsystem.entity.User;
 import com.oscargsedas.transactionsystem.exception.ForbiddenAccessException;
@@ -90,18 +91,18 @@ public class AccountService {
 		return account;
 	}
 
-	public AccountDto getAccountByAccountName(String accountName) {
+	public PublicAccountDto getAccountByAccountName(String accountName) {
 		Account account = accountRepository.findByAccountName(accountName)
 				.orElseThrow(() -> new ResourceNotFoundException("Account not found with name: " + accountName));
 
-		return entityDtoMapper.toAccountDto(account);
+		return entityDtoMapper.toPublicAccountDto(account);
 	}
 
 	Account getAnyAccountEntityById(UUID accountId) {
 		return findAccountOrThrow(accountId);
 	}
 
-	public Page<AccountDto> searchAccountByName(String accountName, Pageable pageable) {
+	public Page<PublicAccountDto> searchAccountByName(String accountName, Pageable pageable) {
 		if (accountName == null) {
 			throw new IllegalArgumentException("Search query must be at least 5 characters long");
 		}
@@ -122,7 +123,7 @@ public class AccountService {
 
 		Page<Account> accounts = accountRepository.findByAccountNameContainingIgnoreCase(normalized, normalizedPageable);
 
-		return accounts.map(entityDtoMapper::toAccountDto);
+		return accounts.map(entityDtoMapper::toPublicAccountDto);
 	}
 
 	public void updateAccount(UUID accountId, AccountRequest request) {
@@ -144,6 +145,16 @@ public class AccountService {
 		}
 
 		accountRepository.delete(account);
+	}
+
+	public Account getAndLockAccountEntityById(UUID accountId) {
+		User authenticatedUser = authenticatedUserUtil.getAuthenticatedUser();
+		Account account = accountRepository.findByIdForUpdate(accountId)
+				.orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + accountId));
+
+		validateOwnershipOrThrow(authenticatedUser.getId(), account);
+
+		return account;
 	}
 
 	private Account findAccountOrThrow(UUID accountId) {

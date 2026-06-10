@@ -1,6 +1,7 @@
 package com.oscargsedas.transactionsystem.service;
 
 import com.oscargsedas.transactionsystem.dto.ExchangeRateResponse;
+import com.oscargsedas.transactionsystem.repository.ExchangeRateRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -11,6 +12,7 @@ import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -22,6 +24,9 @@ class ExchangeRateServiceTest {
 
 	@Mock
 	private WebClient apiClient;
+
+	@Mock
+	private ExchangeRateRepository exchangeRateRepository;
 
 	@Mock
 	private WebClient.RequestHeadersUriSpec requestHeadersUriSpec;
@@ -43,6 +48,7 @@ class ExchangeRateServiceTest {
 				Map.of("USD", new BigDecimal("1.0"), "EUR", new BigDecimal("0.9"), "GBP", new BigDecimal("0.77"))
 		);
 
+		when(exchangeRateRepository.findById(any(String.class))).thenReturn(Optional.empty());
 		when(apiClient.get()).thenReturn(requestHeadersUriSpec);
 		when(requestHeadersUriSpec.uri(any(String.class), any(Object.class))).thenReturn(requestHeadersSpec);
 		when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
@@ -60,6 +66,7 @@ class ExchangeRateServiceTest {
 				Map.of("USD", new BigDecimal("1.0"), "EUR", new BigDecimal("0.9"))
 		);
 
+		when(exchangeRateRepository.findById(any(String.class))).thenReturn(Optional.empty());
 		when(apiClient.get()).thenReturn(requestHeadersUriSpec);
 		when(requestHeadersUriSpec.uri(any(String.class), any(Object.class))).thenReturn(requestHeadersSpec);
 		when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
@@ -70,6 +77,7 @@ class ExchangeRateServiceTest {
 
 	@Test
 	void getRateThrowsWhenResponseIsNull() {
+		when(exchangeRateRepository.findById(any(String.class))).thenReturn(Optional.empty());
 		when(apiClient.get()).thenReturn(requestHeadersUriSpec);
 		when(requestHeadersUriSpec.uri(any(String.class), any(Object.class))).thenReturn(requestHeadersSpec);
 		when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
@@ -92,6 +100,7 @@ class ExchangeRateServiceTest {
 				Map.of("USD", new BigDecimal("1.0"), "EUR", new BigDecimal("0.9"))
 		);
 
+		when(exchangeRateRepository.findById(any(String.class))).thenReturn(Optional.empty());
 		when(apiClient.get()).thenReturn(requestHeadersUriSpec);
 		when(requestHeadersUriSpec.uri(any(String.class), any(Object.class))).thenReturn(requestHeadersSpec);
 		when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
@@ -127,6 +136,7 @@ class ExchangeRateServiceTest {
 				Map.of("USD", new BigDecimal("1.0"), "EUR", new BigDecimal("0.85"))
 		);
 
+		when(exchangeRateRepository.findById(any(String.class))).thenReturn(Optional.empty());
 		when(apiClient.get()).thenReturn(requestHeadersUriSpec);
 		when(requestHeadersUriSpec.uri(any(String.class), any(Object.class))).thenReturn(requestHeadersSpec);
 		when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);

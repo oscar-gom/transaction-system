@@ -2,6 +2,7 @@ package com.oscargsedas.transactionsystem.service;
 
 import com.oscargsedas.transactionsystem.dto.AccountRequest;
 import com.oscargsedas.transactionsystem.dto.EntityDtoMapper;
+import com.oscargsedas.transactionsystem.dto.PublicAccountDto;
 import com.oscargsedas.transactionsystem.entity.Account;
 import com.oscargsedas.transactionsystem.entity.User;
 import com.oscargsedas.transactionsystem.exception.ForbiddenAccessException;
@@ -122,12 +123,12 @@ class AccountServiceTest {
 		account.setAccountName("my-account");
 		account.setCurrency("EUR");
 
-		com.oscargsedas.transactionsystem.dto.AccountDto accountDto = mock(com.oscargsedas.transactionsystem.dto.AccountDto.class);
+		PublicAccountDto accountDto = mock(PublicAccountDto.class);
 
 		when(accountRepository.findByAccountName("my-account")).thenReturn(Optional.of(account));
-		when(entityDtoMapper.toAccountDto(account)).thenReturn(accountDto);
+		when(entityDtoMapper.toPublicAccountDto(account)).thenReturn(accountDto);
 
-		com.oscargsedas.transactionsystem.dto.AccountDto result = accountService.getAccountByAccountName("my-account");
+		PublicAccountDto result = accountService.getAccountByAccountName("my-account");
 
 		assertEquals(accountDto, result);
 	}
@@ -165,16 +166,16 @@ class AccountServiceTest {
 		a2.setAccountName("manolito2");
 		a2.setCurrency("EUR");
 
-		com.oscargsedas.transactionsystem.dto.AccountDto d1 = mock(com.oscargsedas.transactionsystem.dto.AccountDto.class);
-		com.oscargsedas.transactionsystem.dto.AccountDto d2 = mock(com.oscargsedas.transactionsystem.dto.AccountDto.class);
+		PublicAccountDto d1 = mock(PublicAccountDto.class);
+		PublicAccountDto d2 = mock(PublicAccountDto.class);
 
 		Page<Account> page = new PageImpl<>(List.of(a1, a2), PageRequest.of(0, 10), 2);
 
 		when(accountRepository.findByAccountNameContainingIgnoreCase(eq("manol"), any(PageRequest.class))).thenReturn(page);
-		when(entityDtoMapper.toAccountDto(a1)).thenReturn(d1);
-		when(entityDtoMapper.toAccountDto(a2)).thenReturn(d2);
+		when(entityDtoMapper.toPublicAccountDto(a1)).thenReturn(d1);
+		when(entityDtoMapper.toPublicAccountDto(a2)).thenReturn(d2);
 
-		Page<com.oscargsedas.transactionsystem.dto.AccountDto> result = accountService.searchAccountByName("manol", PageRequest.of(0, 10));
+		Page<PublicAccountDto> result = accountService.searchAccountByName("manol", PageRequest.of(0, 10));
 
 		assertEquals(2, result.getTotalElements());
 		assertEquals(d1, result.getContent().get(0));

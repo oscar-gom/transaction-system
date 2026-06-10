@@ -32,9 +32,10 @@ public class JwtUtil {
 		log.info("JWT secret key initialized");
 	}
 
-	public String generateToken(String email) {
+	public String generateToken(String email, Long tokenVersion) {
 		return Jwts.builder()
 				.subject(email)
+				.claim("tokenVersion", tokenVersion)
 				.issuedAt(new Date())
 				.expiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
 				.signWith(key)
@@ -48,6 +49,16 @@ public class JwtUtil {
 				.parseSignedClaims(token)
 				.getPayload()
 				.getSubject();
+	}
+
+	public Long getTokenVersionFromToken(String token) {
+		Number version = Jwts.parser()
+				.verifyWith(key)
+				.build()
+				.parseSignedClaims(token)
+				.getPayload()
+				.get("tokenVersion", Number.class);
+		return version != null ? version.longValue() : 1L;
 	}
 
 	public boolean validateJwtToken(String token) {
