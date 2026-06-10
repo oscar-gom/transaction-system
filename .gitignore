@@ -34,3 +34,4 @@ build/
 
 .env
 
+/src/test/java/com/oscargsedas/transactionsystem/EndToEndSimulationTest.java
